@@ -1,18 +1,20 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../domain/usecases/login_usecase.dart';
+import '../../data/datasources/auth_remote_data_source.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
-/// BLoC (Business Logic Component) untuk Autentikasi
+/// BLoC (Business Logic Component) untuk Autentikasi Pengguna
 class AuthBloc {
   AuthBloc({required this.loginUseCase}) {
-    _eventController.stream.listen(_mapEventToState);
+    _eventSubscription = _eventController.stream.listen(_mapEventToState);
   }
 
   final LoginUseCase loginUseCase;
 
   AuthState _state = const AuthInitial();
+  late final StreamSubscription<AuthEvent> _eventSubscription;
 
   final _eventController = StreamController<AuthEvent>();
   final _stateController = StreamController<AuthState>.broadcast();
@@ -48,25 +50,43 @@ class AuthBloc {
           );
           _emit(AuthSuccess(user));
         } catch (e) {
-          final errorMsg = e is ArgumentError
-              ? e.message.toString()
-              : e.toString().replaceFirst('Exception: ', '');
+          String errorMsg;
+          if (e is ArgumentError) {
+            errorMsg = e.message.toString();
+          } else if (e is AuthApiException) {
+            errorMsg = e.message;
+          } else {
+            errorMsg = e.toString().replaceFirst('Exception: ', '');
+          }
           _emit(AuthFailure(errorMsg));
         }
         break;
 
-      case LogoutRequested():
+      case LogoutRequested(:final token):
+        try {
+          await loginUseCase.repository.logout(token: token);
+        } catch (_) {}
         _emit(const AuthInitial());
         break;
 
-      case AuthCheckRequested():
-        _emit(const AuthInitial());
+      case AuthCheckRequested(:final token):
+        try {
+          final user = await loginUseCase.repository.getCurrentUser(token: token);
+          if (user != null) {
+            _emit(AuthSuccess(user));
+          } else {
+            _emit(const AuthInitial());
+          }
+        } catch (_) {
+          _emit(const AuthInitial());
+        }
         break;
     }
   }
 
   /// Menutup stream controller saat BLoC tidak lagi digunakan
   void close() {
+    _eventSubscription.cancel();
     _eventController.close();
     _stateController.close();
   }
@@ -120,5 +140,3 @@ class AuthBlocProvider extends InheritedWidget {
 /// Alias typedef untuk kemudahan pemanggilan
 typedef AppBlocBuilder = AuthBlocBuilder;
 typedef AppBlocProvider = AuthBlocProvider;
-
-

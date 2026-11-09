@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../shared/theme/theme.dart';
 import '../../../../shared/widgets/widgets.dart';
 
-/// Form Login dengan Username dan Password
+/// Form Login dengan field Username dan Password terhubung ke AuthController
 class LoginForm extends StatefulWidget {
   const LoginForm({
     super.key,
@@ -49,7 +48,7 @@ class _LoginFormState extends State<LoginForm> {
           AppTextField(
             controller: _usernameController,
             label: 'Username',
-            hintText: 'Masukkan nama pengguna...',
+            hintText: 'Masukkan username Anda...',
             prefixIcon: const Icon(Icons.person_outline, size: 20),
             textInputAction: TextInputAction.next,
             enabled: !widget.isLoading,
@@ -76,9 +75,6 @@ class _LoginFormState extends State<LoginForm> {
               if (value == null || value.isEmpty) {
                 return 'Kata sandi tidak boleh kosong';
               }
-              if (value.length < 4) {
-                return 'Kata sandi minimal 4 karakter';
-              }
               return null;
             },
           ),
@@ -99,4 +95,3 @@ class _LoginFormState extends State<LoginForm> {
     );
   }
 }
-

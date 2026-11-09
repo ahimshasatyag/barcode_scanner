@@ -19,11 +19,14 @@ final class LoginSubmitted extends AuthEvent {
 
 /// Event saat user meminta logout
 final class LogoutRequested extends AuthEvent {
-  const LogoutRequested();
+  const LogoutRequested({this.token});
+
+  final String? token;
 }
 
-/// Event untuk memeriksa status login saat aplikasi dimulai
+/// Event untuk memeriksa status login / profil user saat aplikasi dimulai
 final class AuthCheckRequested extends AuthEvent {
-  const AuthCheckRequested();
-}
+  const AuthCheckRequested({this.token});
 
+  final String? token;
+}

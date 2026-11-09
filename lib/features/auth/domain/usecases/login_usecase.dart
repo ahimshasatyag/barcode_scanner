@@ -1,7 +1,7 @@
 import '../entities/user.dart';
 import '../repositories/auth_repository.dart';
 
-/// UseCase untuk menangani alur bisnis Login dengan username dan password
+/// UseCase untuk menangani alur logika bisnis login ke backend AuthController
 class LoginUseCase {
   const LoginUseCase(this.repository);
 
@@ -14,21 +14,13 @@ class LoginUseCase {
     final cleanUsername = username.trim();
 
     if (cleanUsername.isEmpty) {
-      throw ArgumentError('Username tidak boleh kosong');
+      throw ArgumentError('Username wajib diisi.');
     }
 
     if (password.isEmpty) {
-      throw ArgumentError('Password tidak boleh kosong');
+      throw ArgumentError('Password wajib diisi.');
     }
 
-    if (password.length < 4) {
-      throw ArgumentError('Password minimal 4 karakter');
-    }
-
-    return await repository.login(
-      username: cleanUsername,
-      password: password,
-    );
+    return await repository.login(username: cleanUsername, password: password);
   }
 }
-

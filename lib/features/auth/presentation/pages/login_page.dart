@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:barcode/core/transitions/smooth_page_transition.dart';
-import 'package:barcode/features/home/presentation/screens/home_screen.dart';
+import 'package:barcode/features/main_navigation/main_navigation.dart';
 import '../../../../shared/theme/theme.dart';
 import '../../../../shared/widgets/widgets.dart';
 import '../../data/datasources/auth_remote_data_source.dart';
@@ -57,9 +57,12 @@ class _LoginPageState extends State<LoginPage> {
             'Berhasil masuk! Selamat datang, ${user.name}',
           );
 
-          // Navigasi ke Halaman Utama (Home Screen) dengan transisi smooth & ringan
+          // Navigasi ke Halaman Utama Warehouse Navigation (Transaksi, Tracker, Opname)
           context.pushReplacementSmooth(
-            HomeScreen(onToggleTheme: widget.onToggleTheme),
+            MainNavigationPage(
+              onToggleTheme: widget.onToggleTheme,
+              user: user,
+            ),
           );
           break;
 

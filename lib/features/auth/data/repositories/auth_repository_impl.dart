@@ -2,7 +2,7 @@ import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_remote_data_source.dart';
 
-/// Implementasi repository autentikasi yang menghubungkan domain layer ke data source
+/// Implementasi repository autentikasi yang menghubungkan domain layer ke remote data source
 class AuthRepositoryImpl implements AuthRepository {
   const AuthRepositoryImpl({required this.remoteDataSource});
 
@@ -21,14 +21,13 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> logout() async {
-    await remoteDataSource.logout();
+  Future<void> logout({String? token}) async {
+    await remoteDataSource.logout(token: token);
   }
 
   @override
-  Future<User?> getCurrentUser() async {
-    final userModel = await remoteDataSource.getCurrentUser();
+  Future<User?> getCurrentUser({String? token}) async {
+    final userModel = await remoteDataSource.getCurrentUser(token: token);
     return userModel?.toEntity();
   }
 }
-

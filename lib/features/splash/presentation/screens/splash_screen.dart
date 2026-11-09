@@ -24,6 +24,7 @@ class _SplashScreenState extends State<SplashScreen>
   late final Animation<double> _fadeAnimation;
   late final Animation<double> _scaleAnimation;
   Timer? _navigationTimer;
+  bool _isNavigating = false;
 
   @override
   void initState() {
@@ -61,6 +62,10 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _navigateToNext() {
     if (!mounted) return;
+
+    setState(() {
+      _isNavigating = true;
+    });
 
     context.pushReplacementFadeSmooth(
       LoginPage(
@@ -102,63 +107,107 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Logo Eka Maju Mesinindo dengan Hero Animation
+                      // Logo Eka Maju Mesinindo dengan Hero Animation yang menyatu dengan LoginHeader
                       Hero(
                         tag: 'app_company_logo',
-                        child: Image.asset(
-                          AppAssets.logo,
-                          width: 320,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.qr_code_scanner,
-                                  size: 80,
-                                  color: AppColors.primary,
-                                ),
-                                SizedBox(height: 12),
-                                Text(
-                                  'EKA MAJU MESININDO',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.5,
-                                  ),
+                        flightShuttleBuilder: (
+                          flightContext,
+                          animation,
+                          flightDirection,
+                          fromHeroContext,
+                          toHeroContext,
+                        ) {
+                          final toHero = toHeroContext.widget as Hero;
+                          return Material(
+                            type: MaterialType.transparency,
+                            child: toHero.child,
+                          );
+                        },
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF000000),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFF222222),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Indikator Loading Halus
-                      SizedBox(
-                        width: 140,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: const LinearProgressIndicator(
-                            minHeight: 3,
-                            backgroundColor: Color(0xFF222222),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.primary,
+                            ),
+                            child: Image.asset(
+                              AppAssets.logo,
+                              width: 300,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.qr_code_scanner,
+                                      size: 40,
+                                      color: AppColors.primary,
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      'EKA MAJU MESININDO',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
 
-                      // Sub-tagline
-                      const Text(
-                        'Barcode & Inventory System',
-                        style: TextStyle(
-                          color: Color(0xFFB0B0B0),
-                          fontSize: 13,
-                          letterSpacing: 1.2,
-                          fontWeight: FontWeight.w400,
+                      // Elemen sekunder (Loading & Tagline) yang memudar halus saat navigasi
+                      AnimatedOpacity(
+                        opacity: _isNavigating ? 0.0 : 1.0,
+                        duration: const Duration(milliseconds: 250),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Indikator Loading Halus
+                            SizedBox(
+                              width: 140,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: const LinearProgressIndicator(
+                                  minHeight: 3,
+                                  backgroundColor: Color(0xFF222222),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Sub-tagline
+                            const Text(
+                              'Barcode & Inventory System',
+                              style: TextStyle(
+                                color: Color(0xFFB0B0B0),
+                                fontSize: 13,
+                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -172,29 +221,33 @@ class _SplashScreenState extends State<SplashScreen>
               left: 0,
               right: 0,
               bottom: 24,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: const Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'SINCE 1982',
-                      style: TextStyle(
-                        color: Color(0xFF888888),
-                        fontSize: 11,
-                        letterSpacing: 2.0,
-                        fontWeight: FontWeight.w600,
+              child: AnimatedOpacity(
+                opacity: _isNavigating ? 0.0 : 1.0,
+                duration: const Duration(milliseconds: 250),
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'SINCE 1982',
+                        style: TextStyle(
+                          color: Color(0xFF888888),
+                          fontSize: 11,
+                          letterSpacing: 2.0,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'v1.0.0',
-                      style: TextStyle(
-                        color: Color(0xFF555555),
-                        fontSize: 10,
+                      SizedBox(height: 4),
+                      Text(
+                        'v1.0.0',
+                        style: TextStyle(
+                          color: Color(0xFF555555),
+                          fontSize: 10,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

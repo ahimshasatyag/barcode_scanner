@@ -90,7 +90,7 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
   FadePageRoute({
     required Widget page,
     super.settings,
-    Duration duration = const Duration(milliseconds: 400),
+    Duration duration = const Duration(milliseconds: 600),
   }) : super(
           pageBuilder: (context, animation, secondaryAnimation) => page,
           transitionDuration: duration,
