@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import '../../../../core/constants/api_endpoints.dart';
+import 'package:barcode/app/constats/api_endpoints.dart';
 import '../models/user_model.dart';
 
 /// Exception kustom untuk kesalahan komunikasi dengan API Autentikasi

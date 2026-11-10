@@ -1,8 +1,12 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+
 import '../../../../shared/theme/theme.dart';
 import '../../domain/entities/nav_item.dart';
 
-/// Navigation Bar kustom modern dengan animasi pill indicator dan penanda badge
+/// Navigation Bar Melayang (*Floating*) dengan gaya Glassmorphism
+/// berbentuk oval panjang (stadium pill) modern dan elegan.
 class CustomBottomNavBar extends StatelessWidget {
   const CustomBottomNavBar({
     super.key,
@@ -19,38 +23,94 @@ class CustomBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = context.colorScheme;
     final isDark = context.isDarkMode;
+    final bottomSafeArea = MediaQuery.of(context).padding.bottom;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(items.length, (index) {
-              final item = items[index];
-              final isSelected = index == currentIndex;
+    // Jarak melayang dari tepi bawah layar
+    final double bottomMargin = bottomSafeArea > 0 ? bottomSafeArea + 6 : 18;
 
-              return Expanded(
-                child: _NavBarItemTile(
-                  item: item,
-                  isSelected: isSelected,
-                  primaryColor: colorScheme.primary,
-                  onTap: () => onTap(index),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(18, 0, 18, bottomMargin),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(38),
+          boxShadow: [
+            // Ambient soft diffusion shadow untuk efek melayang (floating elevation)
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.50)
+                  : const Color(0xFF0F172A).withValues(alpha: 0.12),
+              blurRadius: 28,
+              spreadRadius: -2,
+              offset: const Offset(0, 10),
+            ),
+            // Contact rim shadow: mempertegas kristal kaca di atas latar terang
+            BoxShadow(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.30)
+                  : const Color(0xFF0F172A).withValues(alpha: 0.06),
+              blurRadius: 8,
+              spreadRadius: 0,
+              offset: const Offset(0, 2),
+            ),
+            // Aksen pendaran warna primer yang sangat halus
+            BoxShadow(
+              color: colorScheme.primary.withValues(
+                alpha: isDark ? 0.08 : 0.05,
+              ),
+              blurRadius: 18,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(38),
+          child: BackdropFilter(
+            // Efek buram frosted glass (blur kuat untuk tekstur kaca beku yang kaya)
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              height: 72,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(38),
+                // Gradien kaca semi-transparan tembus pandang (translucent frosted glass)
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isDark
+                      ? [
+                          const Color(0xFF323234).withValues(alpha: 0.62),
+                          const Color(0xFF1C1C1E).withValues(alpha: 0.45),
+                        ]
+                      : [
+                          Colors.white.withValues(alpha: 0.52),
+                          Colors.white.withValues(alpha: 0.28),
+                        ],
                 ),
-              );
-            }),
+                // Border kilau kaca specular highlight (refraksi tepi kaca kristal)
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.22)
+                      : Colors.white.withValues(alpha: 0.90),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(items.length, (index) {
+                  final item = items[index];
+                  final isSelected = index == currentIndex;
+
+                  return Expanded(
+                    child: _GlassNavBarItemTile(
+                      item: item,
+                      isSelected: isSelected,
+                      primaryColor: colorScheme.primary,
+                      onTap: () => onTap(index),
+                    ),
+                  );
+                }),
+              ),
+            ),
           ),
         ),
       ),
@@ -58,8 +118,8 @@ class CustomBottomNavBar extends StatelessWidget {
   }
 }
 
-class _NavBarItemTile extends StatelessWidget {
-  const _NavBarItemTile({
+class _GlassNavBarItemTile extends StatelessWidget {
+  const _GlassNavBarItemTile({
     required this.item,
     required this.isSelected,
     required this.primaryColor,
@@ -75,89 +135,122 @@ class _NavBarItemTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activeTextColor = isDark ? Colors.white : primaryColor;
-    final inactiveTextColor = isDark ? const Color(0xFF888888) : const Color(0xFF757575);
+    final inactiveTextColor = isDark
+        ? const Color(0xFFAAAAAA)
+        : const Color(0xFF6B7280);
 
     return Tooltip(
       message: item.tooltip ?? item.label,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(28),
         splashColor: primaryColor.withValues(alpha: 0.12),
         highlightColor: Colors.transparent,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
+          duration: const Duration(milliseconds: 260),
           curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
           decoration: BoxDecoration(
             color: isSelected
                 ? primaryColor.withValues(alpha: isDark ? 0.22 : 0.12)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(28),
+            border: isSelected
+                ? Border.all(
+                    color: primaryColor.withValues(alpha: isDark ? 0.35 : 0.22),
+                    width: 1,
+                  )
+                : null,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AnimatedScale(
-                    duration: const Duration(milliseconds: 200),
-                    scale: isSelected ? 1.12 : 1.0,
-                    child: Icon(
-                      isSelected ? item.activeIcon : item.icon,
-                      size: 26,
-                      color: isSelected ? primaryColor : inactiveTextColor,
-                    ),
-                  ),
-
-                  // Badge Notifikasi
-                  if (item.badgeCount > 0)
-                    Positioned(
-                      right: -8,
-                      top: -4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: AppColors.error,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                            width: 1.5,
-                          ),
-                        ),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                        child: Text(
-                          item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            height: 1.1,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    AnimatedScale(
+                      duration: const Duration(milliseconds: 200),
+                      scale: isSelected ? 1.08 : 1.0,
+                      child: Icon(
+                        isSelected ? item.activeIcon : item.icon,
+                        size: 22,
+                        color: isSelected ? primaryColor : inactiveTextColor,
                       ),
                     ),
-                ],
-              ),
-              const SizedBox(height: 4),
 
-              // Label Tab
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? activeTextColor : inactiveTextColor,
-                  letterSpacing: 0.2,
+                    // Badge Notifikasi Dinamis
+                    if (item.badgeCount > 0)
+                      Positioned(
+                        right: -10,
+                        top: -5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4.5,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.error,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF1E1E1E)
+                                  : Colors.white,
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.error.withValues(alpha: 0.4),
+                                blurRadius: 4,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            item.badgeCount > 99 ? '99+' : '${item.badgeCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              height: 1.1,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                child: Text(item.label),
-              ),
-            ],
+                const SizedBox(height: 2),
+
+                // Label Tab
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    height: 1.15,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? activeTextColor : inactiveTextColor,
+                    letterSpacing: 0.1,
+                  ),
+                  child: Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 }
-

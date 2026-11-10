@@ -44,6 +44,14 @@ class NavigationLocalDataSourceImpl implements NavigationLocalDataSource {
       badgeCount: 1, // 1 jadwal stock opname aktif
       tooltip: 'Stock Opname & audit fisik berkala',
     ),
+    NavItemModel(
+      type: NavItemType.profile,
+      label: 'Profil',
+      icon: Icons.person_outline_rounded,
+      activeIcon: Icons.person_rounded,
+      badgeCount: 0,
+      tooltip: 'Profil staf gudang & pengaturan akun',
+    ),
   ];
 
   @override

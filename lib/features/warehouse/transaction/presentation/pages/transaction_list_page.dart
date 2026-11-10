@@ -1,7 +1,11 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:barcode/shared/theme/theme.dart';
 import 'package:barcode/shared/widgets/widgets.dart';
+
+import '../../data/models/gudang_model.dart';
+import '../../data/models/product_lokasi_model.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../domain/entities/warehouse_transaction.dart';
 import '../bloc/transaction_bloc.dart';
@@ -12,10 +16,7 @@ import 'scanner_page.dart';
 import 'transaction_detail_page.dart';
 
 class TransactionListPage extends StatefulWidget {
-  const TransactionListPage({
-    super.key,
-    this.bloc,
-  });
+  const TransactionListPage({super.key, this.bloc});
 
   final TransactionBloc? bloc;
 
@@ -31,7 +32,8 @@ class _TransactionListPageState extends State<TransactionListPage> {
   @override
   void initState() {
     super.initState();
-    _bloc = widget.bloc ?? TransactionBloc(repository: TransactionRepositoryImpl());
+    _bloc =
+        widget.bloc ?? TransactionBloc(repository: TransactionRepositoryImpl());
 
     _blocSubscription = _bloc.stream.listen((state) {
       if (!mounted) return;
@@ -54,9 +56,15 @@ class _TransactionListPageState extends State<TransactionListPage> {
     super.dispose();
   }
 
-  void _openScannerForType(BuildContext context, TransactionType type, List<WarehouseTransaction> list) {
+  void _openScannerForType(
+    BuildContext context,
+    TransactionType type,
+    List<WarehouseTransaction> list,
+  ) {
     // Cari transaksi aktif bertipe ini
-    final active = list.where((t) => t.type == type && t.status != TransactionStatus.completed).toList();
+    final active = list
+        .where((t) => t.type == type && t.status != TransactionStatus.completed)
+        .toList();
     if (active.isNotEmpty) {
       _navigateToScanner(context, active.first);
     } else {
@@ -76,10 +84,7 @@ class _TransactionListPageState extends State<TransactionListPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ScannerPage(
-          transaction: trx,
-          bloc: _bloc,
-        ),
+        builder: (_) => ScannerPage(transaction: trx, bloc: _bloc),
       ),
     );
   }
@@ -88,21 +93,32 @@ class _TransactionListPageState extends State<TransactionListPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TransactionDetailPage(
-          transaction: trx,
-          bloc: _bloc,
-        ),
+        builder: (_) => TransactionDetailPage(transaction: trx, bloc: _bloc),
       ),
     );
   }
 
-  void _showCreateTransactionSheet(BuildContext context) {
+  Future<void> _showCreateTransactionSheet(BuildContext context) async {
     final titleController = TextEditingController();
     final refController = TextEditingController();
     final partnerController = TextEditingController();
     final vehicleController = TextEditingController();
     final targetController = TextEditingController(text: '3');
     TransactionType selectedType = TransactionType.inbound;
+
+    List<GudangModel> gudangs = [];
+    List<ProductLokasiModel> lokasis = [];
+    try {
+      final gList = await _bloc.repository.getGudangList();
+      final lList = await _bloc.repository.getProductLokasiList();
+      gudangs = gList;
+      lokasis = lList;
+    } catch (_) {}
+
+    if (!context.mounted) return;
+
+    GudangModel? selectedGudang = gudangs.isNotEmpty ? gudangs.first : null;
+    ProductLokasiModel? selectedLokasi = lokasis.isNotEmpty ? lokasis.first : null;
 
     showModalBottomSheet<void>(
       context: context,
@@ -117,6 +133,10 @@ class _TransactionListPageState extends State<TransactionListPage> {
             final isInbound = selectedType == TransactionType.inbound;
             const greenColor = Color(0xFF2E7D32);
 
+            final filteredLokasi = selectedGudang != null
+                ? lokasis.where((l) => l.idGudang == null || l.idGudang == selectedGudang!.idGudang).toList()
+                : lokasis;
+
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(modalContext).viewInsets.bottom,
@@ -125,7 +145,9 @@ class _TransactionListPageState extends State<TransactionListPage> {
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -137,7 +159,10 @@ class _TransactionListPageState extends State<TransactionListPage> {
                         children: [
                           const Text(
                             'Buat Transaksi Warehouse',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close),
@@ -152,7 +177,7 @@ class _TransactionListPageState extends State<TransactionListPage> {
                         children: [
                           Expanded(
                             child: ChoiceChip(
-                              label: const Text('Inbound (Kontainer Masuk)'),
+                              label: const Text('Inbound (Penerimaan)'),
                               selected: isInbound,
                               selectedColor: greenColor.withValues(alpha: 0.2),
                               labelStyle: TextStyle(
@@ -160,22 +185,34 @@ class _TransactionListPageState extends State<TransactionListPage> {
                                 fontWeight: isInbound ? FontWeight.bold : null,
                               ),
                               onSelected: (val) {
-                                if (val) setModalState(() => selectedType = TransactionType.inbound);
+                                if (val) {
+                                  setModalState(
+                                    () =>
+                                        selectedType = TransactionType.inbound,
+                                  );
+                                }
                               },
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: ChoiceChip(
-                              label: const Text('Outbound (Muat Truk)'),
+                              label: const Text('Outbound (Pengiriman)'),
                               selected: !isInbound,
-                              selectedColor: colorScheme.primary.withValues(alpha: 0.2),
+                              selectedColor: colorScheme.primary.withValues(
+                                alpha: 0.2,
+                              ),
                               labelStyle: TextStyle(
                                 color: !isInbound ? colorScheme.primary : null,
                                 fontWeight: !isInbound ? FontWeight.bold : null,
                               ),
                               onSelected: (val) {
-                                if (val) setModalState(() => selectedType = TransactionType.outbound);
+                                if (val) {
+                                  setModalState(
+                                    () =>
+                                        selectedType = TransactionType.outbound,
+                                  );
+                                }
                               },
                             ),
                           ),
@@ -183,27 +220,125 @@ class _TransactionListPageState extends State<TransactionListPage> {
                       ),
                       const SizedBox(height: 16),
 
+                      // Dropdown Master Gudang (m_gudang / GudangController.php)
+                      if (gudangs.isNotEmpty) ...[
+                        Text(
+                          'Pilih Gudang (GudangController)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<GudangModel>(
+                              value: selectedGudang,
+                              isExpanded: true,
+                              items: gudangs.map((g) {
+                                return DropdownMenuItem<GudangModel>(
+                                  value: g,
+                                  child: Text('${g.nmGudang} (${g.codeGudang})'),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() {
+                                    selectedGudang = val;
+                                    final newLocs = lokasis
+                                        .where((l) => l.idGudang == null || l.idGudang == val.idGudang)
+                                        .toList();
+                                    if (newLocs.isNotEmpty) {
+                                      selectedLokasi = newLocs.first;
+                                    }
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
+                      // Dropdown Master Lokasi (m_product_lokasi / ProductLokasiController.php)
+                      if (filteredLokasi.isNotEmpty) ...[
+                        Text(
+                          'Pilih Lokasi Rak (ProductLokasiController)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<ProductLokasiModel>(
+                              value: selectedLokasi,
+                              isExpanded: true,
+                              items: filteredLokasi.map((l) {
+                                return DropdownMenuItem<ProductLokasiModel>(
+                                  value: l,
+                                  child: Text(
+                                    (l.completeName != null && l.completeName!.isNotEmpty)
+                                        ? l.completeName!
+                                        : l.nmProductLokasi,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12.5),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() => selectedLokasi = val);
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
                       AppTextField(
                         label: 'Judul Transaksi',
                         hintText: isInbound
-                            ? 'Contoh: Kontainer 40ft Impor CNC Milling Kobe'
-                            : 'Contoh: Pengiriman Truk Wingbox ke PT Astra',
+                            ? 'Contoh: Penerimaan Kontainer Gudang ${selectedGudang?.codeGudang ?? "EMM"}'
+                            : 'Contoh: Pengiriman Truk Wingbox dari ${selectedGudang?.nmGudang ?? "Gudang"}',
                         controller: titleController,
                         prefixIcon: const Icon(Icons.title),
                       ),
                       const SizedBox(height: 12),
 
                       AppTextField(
-                        label: isInbound ? 'Nomor Kontainer / B/L' : 'Nomor Surat Jalan / DO',
-                        hintText: isInbound ? 'Contoh: TGHU-992384-1' : 'Contoh: SJ-EMM-2026/XI/881',
+                        label: isInbound
+                            ? 'Nomor Seri / Kontainer / Ref (m_product_sn)'
+                            : 'Nomor Surat Jalan / DO',
+                        hintText: isInbound
+                            ? 'Contoh: 20.204.01794.28.04951'
+                            : 'Contoh: SJ-EMM-2026/XI/881',
                         controller: refController,
                         prefixIcon: const Icon(Icons.description_outlined),
                       ),
                       const SizedBox(height: 12),
 
                       AppTextField(
-                        label: isInbound ? 'Supplier / Eksportir' : 'Klien / Perusahaan Tujuan',
-                        hintText: isInbound ? 'Contoh: Yamazaki Mazak Corp Japan' : 'Contoh: PT Astra Honda Motor',
+                        label: isInbound
+                            ? 'Supplier / Entitas Pengirim'
+                            : 'Klien / Perusahaan Tujuan',
+                        hintText: isInbound
+                            ? 'Contoh: ${selectedGudang?.nmGudang ?? "Yamazaki Mazak Corp"}'
+                            : 'Contoh: PT Astra Honda Motor',
                         controller: partnerController,
                         prefixIcon: const Icon(Icons.business),
                       ),
@@ -214,10 +349,18 @@ class _TransactionListPageState extends State<TransactionListPage> {
                           Expanded(
                             flex: 2,
                             child: AppTextField(
-                              label: isInbound ? 'No. Seal Kontainer' : 'No. Polisi Truk',
-                              hintText: isInbound ? 'SEAL-JP-901' : 'B 9482 TXT',
+                              label: isInbound
+                                  ? 'No. Seal Kontainer'
+                                  : 'No. Polisi Truk',
+                              hintText: isInbound
+                                  ? 'SEAL-${selectedGudang?.codeGudang ?? "EMM"}-901'
+                                  : 'B 9482 TXT',
                               controller: vehicleController,
-                              prefixIcon: Icon(isInbound ? Icons.lock_outline : Icons.local_shipping),
+                              prefixIcon: Icon(
+                                isInbound
+                                    ? Icons.lock_outline
+                                    : Icons.local_shipping,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -249,18 +392,30 @@ class _TransactionListPageState extends State<TransactionListPage> {
                             child: AppButton(
                               text: 'Simpan & Buka Scan',
                               type: AppButtonType.primary,
-                              backgroundColor: isInbound ? greenColor : colorScheme.primary,
+                              backgroundColor: isInbound
+                                  ? greenColor
+                                  : colorScheme.primary,
                               onPressed: () {
-                                final title = titleController.text.trim().isEmpty
-                                    ? (isInbound ? 'Penerimaan Kontainer Impor' : 'Pengiriman Truk Klien')
+                                final title =
+                                    titleController.text.trim().isEmpty
+                                    ? (isInbound
+                                          ? 'Penerimaan Stok ${selectedGudang?.nmGudang ?? "Gudang"}'
+                                          : 'Pengiriman Armada Truk')
                                     : titleController.text.trim();
                                 final ref = refController.text.trim().isEmpty
-                                    ? 'REF-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}'
+                                    ? '20.204.01794.28.${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}'
                                     : refController.text.trim();
-                                final partner = partnerController.text.trim().isEmpty
-                                    ? (isInbound ? 'Supplier Luar Negeri' : 'Klien Manufaktur')
+                                final partner =
+                                    partnerController.text.trim().isEmpty
+                                    ? (isInbound
+                                          ? (selectedGudang?.nmGudang ?? 'Logistik Gudang Pusat')
+                                          : 'Klien Manufaktur')
                                     : partnerController.text.trim();
-                                final target = int.tryParse(targetController.text.trim()) ?? 3;
+                                final target =
+                                    int.tryParse(
+                                      targetController.text.trim(),
+                                    ) ??
+                                    3;
 
                                 final newTrx = WarehouseTransaction(
                                   id: 'TRX-${isInbound ? 'INB' : 'OUT'}-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
@@ -268,10 +423,13 @@ class _TransactionListPageState extends State<TransactionListPage> {
                                   title: title,
                                   referenceNumber: ref,
                                   partnerName: partner,
-                                  vehicleOrContainerId: vehicleController.text.trim(),
+                                  vehicleOrContainerId: vehicleController.text
+                                      .trim(),
                                   createdAt: DateTime.now(),
                                   targetQuantity: target,
                                   status: TransactionStatus.inProgress,
+                                  operatorName: 'Operator ${selectedGudang?.codeGudang ?? "EMM"}',
+                                  notes: 'Gudang: ${selectedGudang?.nmGudang ?? "-"} | Lokasi: ${selectedLokasi?.completeName ?? "-"}',
                                 );
 
                                 _bloc.add(CreateNewTransaction(newTrx));
@@ -299,13 +457,21 @@ class _TransactionListPageState extends State<TransactionListPage> {
     final textTheme = context.textTheme;
     const greenColor = Color(0xFF2E7D32);
 
+    // Posisi ideal melayang: turun lebih ke bawah agar tepat dan proporsional di atas floating glass navbar
+    final bottomSafeArea = MediaQuery.of(context).padding.bottom;
+    final double fabBottomMargin = bottomSafeArea > 0 ? 88 : 86;
+
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: colorScheme.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: const Text('Buat Transaksi'),
-        onPressed: () => _showCreateTransactionSheet(context),
+      backgroundColor: Colors.transparent,
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: fabBottomMargin),
+        child: FloatingActionButton.extended(
+          backgroundColor: colorScheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          label: const Text('Buat Transaksi'),
+          onPressed: () => _showCreateTransactionSheet(context),
+        ),
       ),
       body: StreamBuilder<TransactionState>(
         stream: _bloc.stream,
@@ -328,8 +494,12 @@ class _TransactionListPageState extends State<TransactionListPage> {
             return true;
           }).toList();
 
-          final inboundCount = transactions.where((t) => t.type == TransactionType.inbound).length;
-          final outboundCount = transactions.where((t) => t.type == TransactionType.outbound).length;
+          final inboundCount = transactions
+              .where((t) => t.type == TransactionType.inbound)
+              .length;
+          final outboundCount = transactions
+              .where((t) => t.type == TransactionType.outbound)
+              .length;
 
           return RefreshIndicator(
             color: colorScheme.primary,
@@ -338,7 +508,10 @@ class _TransactionListPageState extends State<TransactionListPage> {
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 16.0,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -372,7 +545,7 @@ class _TransactionListPageState extends State<TransactionListPage> {
 
                   // Aksi Cepat Scanner Inbound & Outbound
                   Text(
-                    'Aksi Cepat Scanner Transaksi',
+                    'Barcode Scanner',
                     style: textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -461,7 +634,8 @@ class _TransactionListPageState extends State<TransactionListPage> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: filteredList.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final trx = filteredList[index];
                         return TransactionCard(
@@ -471,7 +645,7 @@ class _TransactionListPageState extends State<TransactionListPage> {
                         );
                       },
                     ),
-                  const SizedBox(height: 60),
+                  SizedBox(height: fabBottomMargin + 36),
                 ],
               ),
             ),
@@ -533,18 +707,12 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 2),
           Text(
             subtitle,
-            style: TextStyle(
-              fontSize: 11,
-              color: colorScheme.outline,
-            ),
+            style: TextStyle(fontSize: 11, color: colorScheme.outline),
           ),
         ],
       ),
@@ -605,10 +773,7 @@ class _QuickScannerButton extends StatelessWidget {
                   ),
                   Text(
                     sublabel,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey,
-                    ),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
@@ -647,8 +812,8 @@ class _FilterTabChip extends StatelessWidget {
           color: isSelected
               ? colorScheme.primary
               : isDark
-                  ? const Color(0xFF242424)
-                  : const Color(0xFFEEEEEE),
+              ? const Color(0xFF242424)
+              : const Color(0xFFEEEEEE),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -659,8 +824,8 @@ class _FilterTabChip extends StatelessWidget {
             color: isSelected
                 ? colorScheme.onPrimary
                 : isDark
-                    ? Colors.white70
-                    : Colors.black87,
+                ? Colors.white70
+                : Colors.black87,
           ),
         ),
       ),

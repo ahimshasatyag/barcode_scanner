@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:barcode/shared/theme/theme.dart';
 import 'package:barcode/shared/widgets/widgets.dart';
+
 import '../../domain/entities/machine_item.dart';
 
 class MachineItemTile extends StatelessWidget {
@@ -10,12 +11,14 @@ class MachineItemTile extends StatelessWidget {
     this.index,
     this.onDelete,
     this.onTap,
+    this.onRelocate,
   });
 
   final MachineItem item;
   final int? index;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
+  final VoidCallback? onRelocate;
 
   @override
   Widget build(BuildContext context) {
@@ -64,13 +67,16 @@ class MachineItemTile extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        item.brand.toUpperCase(),
+                        (item.codeGudang ?? item.brand).toUpperCase(),
                         style: TextStyle(
                           color: colorScheme.primary,
                           fontSize: 10,
@@ -100,7 +106,55 @@ class MachineItemTile extends StatelessWidget {
                     color: colorScheme.outline,
                   ),
                 ),
-                if (item.specification != null) ...[
+                if (item.nmGudang != null) ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.warehouse_outlined,
+                        size: 12,
+                        color: colorScheme.outline,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Gudang: ${item.nmGudang}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colorScheme.onSurface.withValues(alpha: 0.8),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (item.completeName != null && item.completeName != '-') ...[
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.pin_drop_outlined,
+                        size: 12,
+                        color: colorScheme.primary,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          item.completeName!,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else if (item.specification != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     item.specification!,
@@ -116,20 +170,34 @@ class MachineItemTile extends StatelessWidget {
                 Row(
                   children: [
                     if (item.countryOfOrigin != null) ...[
-                      Icon(Icons.flag_outlined, size: 13, color: colorScheme.outline),
+                      Icon(
+                        Icons.flag_outlined,
+                        size: 13,
+                        color: colorScheme.outline,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         item.countryOfOrigin!,
-                        style: TextStyle(fontSize: 11, color: colorScheme.outline),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colorScheme.outline,
+                        ),
                       ),
                       const SizedBox(width: 10),
                     ],
                     if (item.weightKg != null) ...[
-                      Icon(Icons.scale_outlined, size: 13, color: colorScheme.outline),
+                      Icon(
+                        Icons.scale_outlined,
+                        size: 13,
+                        color: colorScheme.outline,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${item.weightKg!.toStringAsFixed(0)} Kg',
-                        style: TextStyle(fontSize: 11, color: colorScheme.outline),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: colorScheme.outline,
+                        ),
                       ),
                     ],
                   ],
@@ -138,10 +206,24 @@ class MachineItemTile extends StatelessWidget {
             ),
           ),
 
-          // Tombol Hapus (jika disediakan untuk koreksi salah scan)
+          // Aksi Mutasi Lokasi & Hapus
+          if (onRelocate != null)
+            IconButton(
+              icon: Icon(
+                Icons.swap_horiz,
+                color: colorScheme.primary,
+                size: 20,
+              ),
+              tooltip: 'Pindah Lokasi Rak',
+              onPressed: onRelocate,
+            ),
           if (onDelete != null)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+              icon: const Icon(
+                Icons.delete_outline,
+                color: Colors.redAccent,
+                size: 20,
+              ),
               tooltip: 'Hapus Item',
               onPressed: () async {
                 final confirmed = await AppConfirmationDialog.show(

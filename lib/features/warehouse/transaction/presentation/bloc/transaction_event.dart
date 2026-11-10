@@ -16,7 +16,7 @@ class SelectTransaction extends TransactionEvent {
   final String transactionId;
 }
 
-/// Memindai barcode mesin pada transaksi aktif
+/// Memindai barcode mesin pada transaksi aktif langsung ke database backend
 class ScanMachineBarcode extends TransactionEvent {
   const ScanMachineBarcode({
     required this.transactionId,
@@ -44,14 +44,28 @@ class RemoveMachineItem extends TransactionEvent {
   final String serialNumber;
 }
 
-/// Membuat transaksi baru (kontainer baru atau truk baru)
+/// Membuat transaksi baru (registrasi SN baru atau mutasi baru)
 class CreateNewTransaction extends TransactionEvent {
   const CreateNewTransaction(this.transaction);
   final WarehouseTransaction transaction;
+}
+
+/// Pindah Lokasi Barang di Database Backend via ProductSnController.php
+class UpdateItemLocation extends TransactionEvent {
+  const UpdateItemLocation({
+    required this.sn,
+    required this.idProductLokasi,
+    this.idGudang,
+    required this.transactionId,
+  });
+
+  final String sn;
+  final int idProductLokasi;
+  final int? idGudang;
+  final String transactionId;
 }
 
 /// Mereset notifikasi/status scan sesaat
 class ResetScanResultState extends TransactionEvent {
   const ResetScanResultState();
 }
-

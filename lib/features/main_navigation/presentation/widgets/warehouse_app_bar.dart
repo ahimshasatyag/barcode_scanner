@@ -1,26 +1,133 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_assets.dart';
 import '../../../../shared/theme/theme.dart';
 
-/// AppBar khusus role Warehouse dengan info pengguna dan toggle tema
+/// AppBar khusus role Warehouse dengan tampilan minimalis, bersih, dan modern.
+/// Dilengkapi tombol ikon notifikasi dengan badge indikator interaktif.
 class WarehouseAppBar extends StatelessWidget implements PreferredSizeWidget {
   const WarehouseAppBar({
     super.key,
     required this.title,
-    required this.onToggleTheme,
+    this.onToggleTheme,
     this.userName,
     this.roleName = 'WAREHOUSE',
     this.onScanPressed,
+    this.unreadNotificationCount = 2,
+    this.onNotificationPressed,
   });
 
   final String title;
-  final VoidCallback onToggleTheme;
+  final VoidCallback? onToggleTheme;
   final String? userName;
   final String roleName;
   final VoidCallback? onScanPressed;
+  final int unreadNotificationCount;
+  final VoidCallback? onNotificationPressed;
 
   @override
-  Size get preferredSize => const Size.fromHeight(68);
+  Size get preferredSize => const Size.fromHeight(60);
+
+  void _showNotificationBottomSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        final colorScheme = ctx.colorScheme;
+        final isDark = ctx.isDarkMode;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.grey[700] : Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Notifikasi Gudang',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Text(
+                          '2 Baru',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const _NotificationTile(
+                icon: Icons.archive_outlined,
+                iconColor: Color(0xFF2E7D32),
+                title: 'Kontainer TGHU-882914-2 Tiba',
+                subtitle:
+                    'Peti kemas mesin CNC Mazak Kobe siap diverifikasi di Dermaga 002.',
+                time: '15 Menit lalu',
+                isUnread: true,
+              ),
+              const SizedBox(height: 8),
+              _NotificationTile(
+                icon: Icons.unarchive_outlined,
+                iconColor: colorScheme.primary,
+                title: 'Armada Truk Outbound Standby',
+                subtitle:
+                    'Truk trailer B 9104 UEY siap muat untuk PT Komatsu Indonesia.',
+                time: '1 Jam lalu',
+                isUnread: true,
+              ),
+              const SizedBox(height: 8),
+              const _NotificationTile(
+                icon: Icons.inventory_2_outlined,
+                iconColor: Color(0xFFED6C02),
+                title: 'Jadwal Stock Opname Mingguan',
+                subtitle:
+                    'Audit berkala suku cadang presisi Zona A dijadwalkan sore ini.',
+                time: 'Hari ini, 09:00',
+                isUnread: false,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,102 +137,224 @@ class WarehouseAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: isDark ? const Color(0xFF141414) : Colors.white,
       elevation: 0,
-      scrolledUnderElevation: 1.5,
-      toolbarHeight: 68,
-      titleSpacing: 16,
-      title: Row(
+      scrolledUnderElevation: 0.5,
+      toolbarHeight: 60,
+      titleSpacing: 20,
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Logo Eka Maju Mesinindo
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isDark ? const Color(0xFF333333) : const Color(0xFF222222),
-                width: 0.8,
-              ),
-            ),
-            child: Image.asset(
-              AppAssets.logo,
-              height: 24,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const Icon(
-                Icons.qr_code_scanner,
-                color: AppColors.primary,
-                size: 20,
-              ),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.4,
+              color: colorScheme.onSurface,
             ),
           ),
-          const SizedBox(width: 12),
-
-          // Judul Tab & Badge Role Warehouse
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
+          const SizedBox(height: 2),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  roleName.toUpperCase(),
                   style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: colorScheme.primary,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ),
+              if (userName != null && userName!.isNotEmpty) ...[
+                const SizedBox(width: 6),
+                Text(
+                  '• $userName',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.outline,
+                    fontWeight: FontWeight.w500,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        roleName.toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                          letterSpacing: 0.5,
-                        ),
+              ],
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        // Ikon Notifikasi Minimalis dengan Dot Indikator Merah
+        _NotificationIconButton(
+          unreadCount: unreadNotificationCount,
+          onTap: () {
+            if (onNotificationPressed != null) {
+              onNotificationPressed!();
+            } else {
+              _showNotificationBottomSheet(context);
+            }
+          },
+        ),
+        const SizedBox(width: 16),
+      ],
+    );
+  }
+}
+
+class _NotificationIconButton extends StatelessWidget {
+  const _NotificationIconButton({
+    required this.unreadCount,
+    required this.onTap,
+  });
+
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = context.colorScheme;
+    final isDark = context.isDarkMode;
+
+    return Tooltip(
+      message: 'Notifikasi Gudang',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF222222) : const Color(0xFFF1F5F9),
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isDark ? const Color(0xFF333333) : const Color(0xFFE2E8F0),
+              width: 0.8,
+            ),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(
+                Icons.notifications_outlined,
+                size: 20,
+                color: colorScheme.onSurface,
+              ),
+              if (unreadCount > 0)
+                Positioned(
+                  top: 9,
+                  right: 9,
+                  child: Container(
+                    width: 7.5,
+                    height: 7.5,
+                    decoration: BoxDecoration(
+                      color: AppColors.error,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF222222) : Colors.white,
+                        width: 1.5,
                       ),
                     ),
-                    if (userName != null && userName!.isNotEmpty) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        '• $userName',
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationTile extends StatelessWidget {
+  const _NotificationTile({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.time,
+    required this.isUnread,
+  });
+
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final String time;
+  final bool isUnread;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isUnread
+            ? (isDark ? const Color(0xFF222222) : const Color(0xFFF8FAFC))
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isUnread
+              ? (isDark ? const Color(0xFF333333) : const Color(0xFFE2E8F0))
+              : Colors.transparent,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
                         style: TextStyle(
-                          fontSize: 11,
-                          color: colorScheme.outline,
+                          fontSize: 13,
+                          fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ],
+                    ),
+                    Text(
+                      time,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey,
+                      ),
+                    ),
                   ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
                 ),
               ],
             ),
           ),
         ],
       ),
-      actions: [
-        if (onScanPressed != null)
-          IconButton(
-            icon: const Icon(Icons.qr_code_scanner),
-            tooltip: 'Scan Barcode Cepat',
-            onPressed: onScanPressed,
-            color: colorScheme.primary,
-          ),
-        IconButton(
-          icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-          tooltip: isDark ? 'Beralih ke Light Mode' : 'Beralih ke Dark Mode',
-          onPressed: onToggleTheme,
-        ),
-        const SizedBox(width: 8),
-      ],
     );
   }
 }

@@ -76,6 +76,9 @@ class TransactionBloc {
       case CreateNewTransaction(:final transaction):
         await _onCreateNewTransaction(transaction);
         break;
+      case UpdateItemLocation(:final sn, :final idProductLokasi, :final idGudang, :final transactionId):
+        await _onUpdateItemLocation(sn, idProductLokasi, idGudang, transactionId);
+        break;
       case ResetScanResultState():
         if (_state is TransactionLoaded) {
           final loaded = _state as TransactionLoaded;
@@ -158,7 +161,6 @@ class TransactionBloc {
         );
       }
 
-      // Return to loaded state with updated transaction list & selected transaction
       _emit(
         TransactionLoaded(
           transactions: allTrx,
@@ -235,6 +237,37 @@ class TransactionBloc {
       );
     } catch (e) {
       _emit(TransactionError('Gagal membuat transaksi baru: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onUpdateItemLocation(
+    String sn,
+    int idProductLokasi,
+    int? idGudang,
+    String transactionId,
+  ) async {
+    try {
+      final res = await repository.updateProductLocation(
+        sn: sn,
+        idProductLokasi: idProductLokasi,
+        idGudang: idGudang,
+      );
+      final message = res['message']?.toString() ?? 'Lokasi barang berhasil dipindahkan.';
+      final updatedTrx = await repository.getTransactionById(transactionId);
+      final allTrx = await _getTransactionsUseCase();
+
+      _emit(
+        TransactionActionSuccess(
+          message: message,
+          transaction: updatedTrx,
+        ),
+      );
+
+      _emit(
+        TransactionLoaded(transactions: allTrx, selectedTransaction: updatedTrx),
+      );
+    } catch (e) {
+      _emit(TransactionError('Gagal memindahkan lokasi: ${e.toString()}'));
     }
   }
 

@@ -1,5 +1,7 @@
 import '../entities/scan_result.dart';
 import '../entities/warehouse_transaction.dart';
+import '../../data/models/gudang_model.dart';
+import '../../data/models/product_lokasi_model.dart';
 
 /// Kontrak repositori transaksi warehouse
 abstract class TransactionRepository {
@@ -25,5 +27,16 @@ abstract class TransactionRepository {
   Future<WarehouseTransaction> removeScannedItem({
     required String transactionId,
     required String serialNumber,
+  });
+
+  // =========================================================================
+  // Integrasi Database Backend (ProductSn, ProductLokasi, Gudang)
+  // =========================================================================
+  Future<List<GudangModel>> getGudangList();
+  Future<List<ProductLokasiModel>> getProductLokasiList({int? idGudang});
+  Future<Map<String, dynamic>> updateProductLocation({
+    required String sn,
+    required int idProductLokasi,
+    int? idGudang,
   });
 }

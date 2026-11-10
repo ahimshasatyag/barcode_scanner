@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../../shared/theme/theme.dart';
 import '../../../../shared/widgets/widgets.dart';
 
@@ -106,10 +107,16 @@ class _OpnamePageState extends State<OpnamePage> {
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: colorScheme.primary.withValues(alpha: 0.12),
+                              color: colorScheme.primary.withValues(
+                                alpha: 0.12,
+                              ),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Icon(Icons.fact_check_outlined, color: colorScheme.primary, size: 22),
+                            child: Icon(
+                              Icons.fact_check_outlined,
+                              color: colorScheme.primary,
+                              size: 22,
+                            ),
                           ),
                           const SizedBox(width: 10),
                           Column(
@@ -117,11 +124,17 @@ class _OpnamePageState extends State<OpnamePage> {
                             children: [
                               const Text(
                                 'Stock Opname Q4',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
                               ),
                               Text(
                                 'Gudang Utama • Nov 2026',
-                                style: TextStyle(fontSize: 11.5, color: colorScheme.outline),
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: colorScheme.outline,
+                                ),
                               ),
                             ],
                           ),
@@ -141,7 +154,10 @@ class _OpnamePageState extends State<OpnamePage> {
                     children: [
                       const Text(
                         'Progres Audit Fisik',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       Text(
                         '74% (259/350 SKU)',
@@ -159,8 +175,12 @@ class _OpnamePageState extends State<OpnamePage> {
                     child: LinearProgressIndicator(
                       value: 0.74,
                       minHeight: 8,
-                      backgroundColor: isDark ? const Color(0xFF333333) : const Color(0xFFEEEEEE),
-                      valueColor: AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                      backgroundColor: isDark
+                          ? const Color(0xFF333333)
+                          : const Color(0xFFEEEEEE),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        colorScheme.primary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 18),
@@ -175,7 +195,11 @@ class _OpnamePageState extends State<OpnamePage> {
                           color: successColor,
                         ),
                       ),
-                      Container(width: 1, height: 32, color: Colors.grey.withValues(alpha: 0.2)),
+                      Container(
+                        width: 1,
+                        height: 32,
+                        color: Colors.grey.withValues(alpha: 0.2),
+                      ),
                       const Expanded(
                         child: _MetricItem(
                           label: 'Ada Selisih',
@@ -183,7 +207,11 @@ class _OpnamePageState extends State<OpnamePage> {
                           color: errorColor,
                         ),
                       ),
-                      Container(width: 1, height: 32, color: Colors.grey.withValues(alpha: 0.2)),
+                      Container(
+                        width: 1,
+                        height: 32,
+                        color: Colors.grey.withValues(alpha: 0.2),
+                      ),
                       const Expanded(
                         child: _MetricItem(
                           label: 'Belum Scan',
@@ -206,7 +234,10 @@ class _OpnamePageState extends State<OpnamePage> {
               type: AppButtonType.primary,
               isFullWidth: true,
               onPressed: () {
-                AppSnackBar.showInfo(context, 'Membuka Scanner Barcode Verifikasi Fisik Opname');
+                AppSnackBar.showInfo(
+                  context,
+                  'Membuka Scanner Barcode Verifikasi Fisik Opname',
+                );
               },
             ),
             const SizedBox(height: 24),
@@ -256,7 +287,8 @@ class _OpnamePageState extends State<OpnamePage> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: filteredItems.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final item = filteredItems[index];
                   final diff = item['diff'] as int;
@@ -329,8 +361,8 @@ class _OpnamePageState extends State<OpnamePage> {
                                 color: diff == 0
                                     ? successColor
                                     : diff > 0
-                                        ? warningColor
-                                        : errorColor,
+                                    ? warningColor
+                                    : errorColor,
                               ),
                             ),
                           ],
@@ -340,6 +372,7 @@ class _OpnamePageState extends State<OpnamePage> {
                   );
                 },
               ),
+            const SizedBox(height: 110),
           ],
         ),
       ),
@@ -381,13 +414,7 @@ class _MetricItem extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: Colors.grey,
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
       ],
     );
   }
@@ -419,8 +446,8 @@ class _FilterChip extends StatelessWidget {
           color: isSelected
               ? colorScheme.primary
               : isDark
-                  ? const Color(0xFF242424)
-                  : const Color(0xFFEEEEEE),
+              ? const Color(0xFF242424)
+              : const Color(0xFFEEEEEE),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -431,8 +458,8 @@ class _FilterChip extends StatelessWidget {
             color: isSelected
                 ? colorScheme.onPrimary
                 : isDark
-                    ? Colors.white70
-                    : Colors.black87,
+                ? Colors.white70
+                : Colors.black87,
           ),
         ),
       ),

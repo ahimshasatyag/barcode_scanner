@@ -2,6 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:barcode/shared/theme/theme.dart';
 import 'package:barcode/shared/widgets/widgets.dart';
+import '../../data/models/gudang_model.dart';
+import '../../data/models/product_lokasi_model.dart';
+import '../../domain/entities/machine_item.dart';
 import '../../domain/entities/warehouse_transaction.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
@@ -56,6 +59,267 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   void dispose() {
     _blocSubscription?.cancel();
     super.dispose();
+  }
+
+  void _showItemDetailDialog(BuildContext context, MachineItem item) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.inventory_2_outlined, color: Color(0xFF2E7D32)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  item.modelName,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _DetailRow(icon: Icons.tag, label: 'ID Product SN', value: '${item.idProductSn ?? "-"}'),
+                _DetailRow(icon: Icons.qr_code, label: 'Serial Number', value: item.serialNumber),
+                _DetailRow(icon: Icons.warehouse_outlined, label: 'Gudang', value: item.nmGudang ?? '-'),
+                _DetailRow(icon: Icons.pin_drop_outlined, label: 'Lokasi Rak', value: item.completeName ?? item.nmProductLokasi ?? '-'),
+                _DetailRow(icon: Icons.numbers, label: 'Kuantitas (nqty)', value: '${item.nqty} Unit'),
+                if (item.dateCreate != null)
+                  _DetailRow(icon: Icons.calendar_today, label: 'Tanggal Input', value: item.dateCreate.toString().substring(0, 19)),
+                if (item.dateUpdate != null)
+                  _DetailRow(icon: Icons.update, label: 'Update Terakhir', value: item.dateUpdate.toString().substring(0, 19)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.swap_horiz),
+              label: const Text('Pindah Lokasi'),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showRelocateModal(context, item);
+              },
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Tutup'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showRelocateModal(BuildContext context, MachineItem item) async {
+    List<GudangModel> gudangs = [];
+    List<ProductLokasiModel> lokasis = [];
+
+    try {
+      final gList = await widget.bloc.repository.getGudangList();
+      final lList = await widget.bloc.repository.getProductLokasiList();
+      gudangs = gList;
+      lokasis = lList;
+    } catch (_) {}
+
+    if (!context.mounted) return;
+
+    GudangModel? selectedGudang = gudangs.isNotEmpty ? gudangs.first : null;
+    ProductLokasiModel? selectedLokasi = lokasis.isNotEmpty ? lokasis.first : null;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final colorScheme = ctx.colorScheme;
+        final isDark = ctx.isDarkMode;
+
+        return StatefulBuilder(
+          builder: (modalCtx, setModalState) {
+            final filteredLokasi = selectedGudang != null
+                ? lokasis.where((l) => l.idGudang == null || l.idGudang == selectedGudang!.idGudang).toList()
+                : lokasis;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(modalCtx).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Mutasi Lokasi Barang',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(modalCtx),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Pindahkan lokasi penyimpanan fisik untuk serial number ini di database (ProductSnController & ProductLokasiController).',
+                        style: TextStyle(fontSize: 12.5, color: colorScheme.outline),
+                      ),
+                      const Divider(height: 24),
+                      _DetailRow(
+                        icon: Icons.qr_code,
+                        label: 'Serial Number',
+                        value: item.serialNumber,
+                      ),
+                      _DetailRow(
+                        icon: Icons.pin_drop_outlined,
+                        label: 'Lokasi Sekarang',
+                        value: item.completeName ?? item.nmProductLokasi ?? 'Belum ditentukan',
+                      ),
+                      _DetailRow(
+                        icon: Icons.warehouse_outlined,
+                        label: 'Gudang Sekarang',
+                        value: item.nmGudang ?? '-',
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Pilih Gudang Tujuan',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<GudangModel>(
+                            value: selectedGudang,
+                            isExpanded: true,
+                            hint: const Text('Pilih Gudang Tujuan'),
+                            items: gudangs.map((g) {
+                              return DropdownMenuItem<GudangModel>(
+                                value: g,
+                                child: Text('${g.nmGudang} (${g.codeGudang})'),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setModalState(() {
+                                  selectedGudang = val;
+                                  final newLocs = lokasis
+                                      .where((l) => l.idGudang == null || l.idGudang == val.idGudang)
+                                      .toList();
+                                  if (newLocs.isNotEmpty) {
+                                    selectedLokasi = newLocs.first;
+                                  }
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Pilih Lokasi Rak Tujuan (m_product_lokasi)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<ProductLokasiModel>(
+                            value: selectedLokasi,
+                            isExpanded: true,
+                            hint: const Text('Pilih Lokasi Rak'),
+                            items: filteredLokasi.map((l) {
+                              return DropdownMenuItem<ProductLokasiModel>(
+                                value: l,
+                                child: Text(
+                                  (l.completeName != null && l.completeName!.isNotEmpty)
+                                      ? l.completeName!
+                                      : l.nmProductLokasi,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 12.5),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setModalState(() => selectedLokasi = val);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppButton(
+                              text: 'Batal',
+                              type: AppButtonType.outlined,
+                              onPressed: () => Navigator.pop(modalCtx),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: AppButton(
+                              text: 'Simpan Mutasi',
+                              type: AppButtonType.primary,
+                              onPressed: () {
+                                if (selectedLokasi != null) {
+                                  widget.bloc.add(
+                                    UpdateItemLocation(
+                                      sn: item.serialNumber,
+                                      idProductLokasi: selectedLokasi!.idProductLokasi,
+                                      idGudang: selectedGudang?.idGudang ?? selectedLokasi!.idGudang,
+                                      transactionId: _currentTransaction.id,
+                                    ),
+                                  );
+                                  Navigator.pop(modalCtx);
+                                } else {
+                                  AppSnackBar.showError(modalCtx, 'Pilih lokasi rak tujuan terlebih dahulu.');
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -274,15 +538,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       return MachineItemTile(
                         item: item,
                         index: index + 1,
-                        onTap: () {
-                          AppConfirmationDialog.show(
-                            context,
-                            title: '${item.brand} ${item.modelName}',
-                            message:
-                                'Nomor Seri: ${item.serialNumber}\nBarcode: ${item.barcode}\nAsal: ${item.countryOfOrigin ?? '-'}\nBerat: ${item.weightKg ?? '-'} Kg\nSpesifikasi: ${item.specification ?? '-'}\nWaktu Scan: ${item.scannedAt ?? '-'}',
-                            confirmText: 'Tutup',
-                          );
-                        },
+                        onTap: () => _showItemDetailDialog(context, item),
+                        onRelocate: isCompleted ? null : () => _showRelocateModal(context, item),
                       );
                     },
                   ),

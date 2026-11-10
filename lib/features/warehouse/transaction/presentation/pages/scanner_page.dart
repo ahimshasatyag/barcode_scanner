@@ -166,11 +166,12 @@ class _ScannerPageState extends State<ScannerPage> {
               children: [
                 // Komponen Kamera Scanner Viewfinder
                 Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 8.0),
                   child: SizedBox(
-                    height: 290,
+                    height: 310,
                     child: CameraScannerView(
                       isScanningPaused: isCompleted,
+                      scannedBarcodes: items.map((e) => e.barcode).toList(),
                       title: isInbound
                           ? 'Arahkan ke Barcode Mesin Impor'
                           : 'Arahkan ke Barcode Mesin Muatan Truk',
@@ -235,6 +236,15 @@ class _ScannerPageState extends State<ScannerPage> {
                             return MachineItemTile(
                               item: item,
                               index: items.length - index,
+                              onTap: () {
+                                AppConfirmationDialog.show(
+                                  context,
+                                  title: item.modelName,
+                                  message:
+                                      'Serial Number: ${item.serialNumber}\nGudang: ${item.nmGudang ?? "-"}\nLokasi: ${item.completeName ?? item.nmProductLokasi ?? "-"}\nJumlah: ${item.nqty} Unit\nWaktu Scan: ${item.scannedAt ?? "-"}',
+                                  confirmText: 'Tutup',
+                                );
+                              },
                               onDelete: isCompleted
                                   ? null
                                   : () {

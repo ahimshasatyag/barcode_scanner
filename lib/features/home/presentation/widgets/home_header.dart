@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/constants/app_assets.dart';
+import 'package:barcode/app/constats/app_assets.dart';
 import '../../../../shared/theme/theme.dart';
 import '../../../../shared/widgets/widgets.dart';
 

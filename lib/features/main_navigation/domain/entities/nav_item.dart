@@ -5,6 +5,7 @@ enum NavItemType {
   transaksi,
   tracker,
   opname,
+  profile,
 }
 
 /// Entitas NavItem yang merepresentasikan item/tab pada navigation bar

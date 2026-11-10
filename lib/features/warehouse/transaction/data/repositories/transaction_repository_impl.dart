@@ -2,6 +2,8 @@ import '../../domain/entities/scan_result.dart';
 import '../../domain/entities/warehouse_transaction.dart';
 import '../../domain/repositories/transaction_repository.dart';
 import '../datasources/transaction_remote_data_source.dart';
+import '../models/gudang_model.dart';
+import '../models/product_lokasi_model.dart';
 import '../models/warehouse_transaction_model.dart';
 
 class TransactionRepositoryImpl implements TransactionRepository {
@@ -50,6 +52,29 @@ class TransactionRepositoryImpl implements TransactionRepository {
     return _remoteDataSource.removeScannedItem(
       transactionId: transactionId,
       serialNumber: serialNumber,
+    );
+  }
+
+  @override
+  Future<List<GudangModel>> getGudangList() async {
+    return _remoteDataSource.getGudangList();
+  }
+
+  @override
+  Future<List<ProductLokasiModel>> getProductLokasiList({int? idGudang}) async {
+    return _remoteDataSource.getProductLokasiList(idGudang: idGudang);
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateProductLocation({
+    required String sn,
+    required int idProductLokasi,
+    int? idGudang,
+  }) async {
+    return _remoteDataSource.updateProductLocation(
+      sn: sn,
+      idProductLokasi: idProductLokasi,
+      idGudang: idGudang,
     );
   }
 }

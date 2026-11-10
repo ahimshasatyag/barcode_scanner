@@ -14,6 +14,7 @@ import '../widgets/warehouse_app_bar.dart';
 import 'opname_page.dart';
 import 'tracker_page.dart';
 import 'transaksi_page.dart';
+import '../../../profile/profile.dart';
 
 /// Halaman Navigasi Utama Shell untuk Role Warehouse
 class MainNavigationPage extends StatefulWidget {
@@ -182,15 +183,20 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
           final currentIndex = state.currentIndex;
           final currentTitle = items[currentIndex].label;
 
-          // Halaman khusus Role Warehouse: Transaksi, Tracker, Opname
-          final pages = const [
-            TransaksiPage(),
-            TrackerPage(),
-            OpnamePage(),
+          // Halaman khusus Role Warehouse: Transaksi, Tracker, Opname, Profil
+          final pages = [
+            const TransaksiPage(),
+            const TrackerPage(),
+            const OpnamePage(),
+            ProfilePage(
+              user: widget.user,
+              onToggleTheme: widget.onToggleTheme,
+            ),
           ];
 
           return Scaffold(
             backgroundColor: colorScheme.surface,
+            extendBody: true,
             appBar: WarehouseAppBar(
               title: currentTitle,
               onToggleTheme: widget.onToggleTheme,

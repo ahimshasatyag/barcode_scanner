@@ -29,11 +29,11 @@ void main() {
     });
 
     test(
-      'GetNavigationItemsUseCase should return 3 items for warehouse role',
+      'GetNavigationItemsUseCase should return 4 items for warehouse role (including Profil)',
       () async {
         final items = await getItemsUseCase.execute(role: 'warehouse');
 
-        expect(items.length, 3);
+        expect(items.length, 4);
         expect(items[0].label, 'Transaksi');
         expect(items[0].type, NavItemType.transaksi);
 
@@ -42,6 +42,9 @@ void main() {
 
         expect(items[2].label, 'Opname');
         expect(items[2].type, NavItemType.opname);
+
+        expect(items[3].label, 'Profil');
+        expect(items[3].type, NavItemType.profile);
       },
     );
 
@@ -79,10 +82,11 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 50));
 
-        // Memastikan 3 tab utama role warehouse tampil di navbar
+        // Memastikan 4 tab utama role warehouse tampil di navbar
         expect(find.text('Transaksi'), findsWidgets);
         expect(find.text('Tracker'), findsOneWidget);
         expect(find.text('Opname'), findsOneWidget);
+        expect(find.text('Profil'), findsOneWidget);
 
         // Verifikasi halaman Transaksi aktif pertama kali
         expect(find.byType(TransaksiPage), findsOneWidget);
@@ -102,6 +106,14 @@ void main() {
 
         final stateAfterOpname = navigationBloc.state as NavigationLoaded;
         expect(stateAfterOpname.currentIndex, 2);
+
+        // Tap tab Profil
+        await tester.tap(find.text('Profil'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        final stateAfterProfil = navigationBloc.state as NavigationLoaded;
+        expect(stateAfterProfil.currentIndex, 3);
       },
     );
   });

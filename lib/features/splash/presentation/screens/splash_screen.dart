@@ -1,16 +1,14 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:barcode/core/constants/app_assets.dart';
+import 'package:barcode/app/constats/app_assets.dart';
 import 'package:barcode/core/transitions/smooth_page_transition.dart';
 import 'package:barcode/features/auth/presentation/pages/login_page.dart';
 import 'package:barcode/shared/theme/theme.dart';
 
 /// Halaman Splash Screen dengan logo PT Eka Maju Mesinindo
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({
-    super.key,
-    required this.onToggleTheme,
-  });
+  const SplashScreen({super.key, required this.onToggleTheme});
 
   final VoidCallback onToggleTheme;
 
@@ -50,7 +48,10 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     // Navigasi otomatis ke Halaman Login setelah 2.6 detik
-    _navigationTimer = Timer(const Duration(milliseconds: 2600), _navigateToNext);
+    _navigationTimer = Timer(
+      const Duration(milliseconds: 2600),
+      _navigateToNext,
+    );
   }
 
   @override
@@ -68,9 +69,7 @@ class _SplashScreenState extends State<SplashScreen>
     });
 
     context.pushReplacementFadeSmooth(
-      LoginPage(
-        onToggleTheme: widget.onToggleTheme,
-      ),
+      LoginPage(onToggleTheme: widget.onToggleTheme),
     );
   }
 
@@ -110,23 +109,27 @@ class _SplashScreenState extends State<SplashScreen>
                       // Logo Eka Maju Mesinindo dengan Hero Animation yang menyatu dengan LoginHeader
                       Hero(
                         tag: 'app_company_logo',
-                        flightShuttleBuilder: (
-                          flightContext,
-                          animation,
-                          flightDirection,
-                          fromHeroContext,
-                          toHeroContext,
-                        ) {
-                          final toHero = toHeroContext.widget as Hero;
-                          return Material(
-                            type: MaterialType.transparency,
-                            child: toHero.child,
-                          );
-                        },
+                        flightShuttleBuilder:
+                            (
+                              flightContext,
+                              animation,
+                              flightDirection,
+                              fromHeroContext,
+                              toHeroContext,
+                            ) {
+                              final toHero = toHeroContext.widget as Hero;
+                              return Material(
+                                type: MaterialType.transparency,
+                                child: toHero.child,
+                              );
+                            },
                         child: Material(
                           type: MaterialType.transparency,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 14,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFF000000),
                               borderRadius: BorderRadius.circular(16),
@@ -257,4 +260,3 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-

@@ -279,6 +279,7 @@ class _TrackerPageState extends State<TrackerPage> {
                   );
                 },
               ),
+            const SizedBox(height: 110),
           ],
         ),
       ),
