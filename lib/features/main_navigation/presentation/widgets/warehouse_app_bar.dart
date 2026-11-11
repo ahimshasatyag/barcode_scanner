@@ -11,7 +11,7 @@ class WarehouseAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.userName,
     this.roleName = 'WAREHOUSE',
     this.onScanPressed,
-    this.unreadNotificationCount = 2,
+    this.unreadNotificationCount = 0,
     this.onNotificationPressed,
   });
 
@@ -56,35 +56,12 @@ class WarehouseAppBar extends StatelessWidget implements PreferredSizeWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Notifikasi Gudang',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.error.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          '2 Baru',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.error,
-                          ),
-                        ),
-                      ),
-                    ],
+                  const Text(
+                    'Notifikasi Gudang',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, size: 20),
@@ -92,35 +69,28 @@ class WarehouseAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              const _NotificationTile(
-                icon: Icons.archive_outlined,
-                iconColor: Color(0xFF2E7D32),
-                title: 'Kontainer TGHU-882914-2 Tiba',
-                subtitle:
-                    'Peti kemas mesin CNC Mazak Kobe siap diverifikasi di Dermaga 002.',
-                time: '15 Menit lalu',
-                isUnread: true,
-              ),
-              const SizedBox(height: 8),
-              _NotificationTile(
-                icon: Icons.unarchive_outlined,
-                iconColor: colorScheme.primary,
-                title: 'Armada Truk Outbound Standby',
-                subtitle:
-                    'Truk trailer B 9104 UEY siap muat untuk PT Komatsu Indonesia.',
-                time: '1 Jam lalu',
-                isUnread: true,
-              ),
-              const SizedBox(height: 8),
-              const _NotificationTile(
-                icon: Icons.inventory_2_outlined,
-                iconColor: Color(0xFFED6C02),
-                title: 'Jadwal Stock Opname Mingguan',
-                subtitle:
-                    'Audit berkala suku cadang presisi Zona A dijadwalkan sore ini.',
-                time: 'Hari ini, 09:00',
-                isUnread: false,
+              const SizedBox(height: 16),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.notifications_none_outlined,
+                        size: 48,
+                        color: colorScheme.outline,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Belum ada notifikasi baru',
+                        style: TextStyle(
+                          color: colorScheme.outline,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -265,95 +235,6 @@ class _NotificationIconButton extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    required this.subtitle,
-    required this.time,
-    required this.isUnread,
-  });
-
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final String subtitle;
-  final String time;
-  final bool isUnread;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isUnread
-            ? (isDark ? const Color(0xFF222222) : const Color(0xFFF8FAFC))
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isUnread
-              ? (isDark ? const Color(0xFF333333) : const Color(0xFFE2E8F0))
-              : Colors.transparent,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    Text(
-                      time,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

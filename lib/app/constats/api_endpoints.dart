@@ -62,12 +62,25 @@ abstract final class ApiEndpoints {
   static String gudangLokasi(int id) => '/gudang/$id/lokasi';
 
   // ==========================================
-  // Endpoint Modul Transaksi Warehouse
+  // Endpoint Modul Transaksi Warehouse (t_transaksi_gudang & t_transaksi_gudang_item)
   // ==========================================
   static const String transactions = '/transactions';
+  static const String transaksiGudang = '/transaksi-gudang';
   static String transactionDetail(String id) => '/transactions/$id';
   static String transactionScan(String id) => '/transactions/$id/scan';
   static String transactionComplete(String id) => '/transactions/$id/complete';
+
+  // ==========================================
+  // Endpoint Master Supplier (m_suppliers / m_supplier)
+  // ==========================================
+  static const String suppliers = '/suppliers';
+  static const String supplier = '/supplier';
+
+  // ==========================================
+  // Endpoint Delivery Order (tb_do_hdr)
+  // ==========================================
+  static const String doHdr = '/do';
+  static const String deliveryOrders = '/delivery-orders';
 
   // ==========================================
   // Endpoint Modul Tracker & Opname

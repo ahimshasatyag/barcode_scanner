@@ -2,8 +2,11 @@ import '../../domain/entities/scan_result.dart';
 import '../../domain/entities/warehouse_transaction.dart';
 import '../../domain/repositories/transaction_repository.dart';
 import '../datasources/transaction_remote_data_source.dart';
+import '../models/do_hdr_model.dart';
 import '../models/gudang_model.dart';
+import '../models/machine_item_model.dart';
 import '../models/product_lokasi_model.dart';
+import '../models/supplier_model.dart';
 import '../models/warehouse_transaction_model.dart';
 
 class TransactionRepositoryImpl implements TransactionRepository {
@@ -63,6 +66,29 @@ class TransactionRepositoryImpl implements TransactionRepository {
   @override
   Future<List<ProductLokasiModel>> getProductLokasiList({int? idGudang}) async {
     return _remoteDataSource.getProductLokasiList(idGudang: idGudang);
+  }
+
+  @override
+  Future<List<SupplierModel>> getSupplierList() async {
+    return _remoteDataSource.getSupplierList();
+  }
+
+  @override
+  Future<List<DoHdrModel>> getDoList() async {
+    return _remoteDataSource.getDoList();
+  }
+
+  @override
+  Future<List<MachineItemModel>> getProductSnList({
+    int? idGudang,
+    int? idProductLokasi,
+    String? search,
+  }) async {
+    return _remoteDataSource.getProductSnList(
+      idGudang: idGudang,
+      idProductLokasi: idProductLokasi,
+      search: search,
+    );
   }
 
   @override

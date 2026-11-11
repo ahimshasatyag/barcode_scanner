@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:barcode/shared/theme/theme.dart';
 import 'package:barcode/shared/widgets/widgets.dart';
 
+import '../../data/models/do_hdr_model.dart';
 import '../../data/models/gudang_model.dart';
+import '../../data/models/machine_item_model.dart';
 import '../../data/models/product_lokasi_model.dart';
+import '../../data/models/supplier_model.dart';
 import '../../data/repositories/transaction_repository_impl.dart';
 import '../../domain/entities/warehouse_transaction.dart';
 import '../bloc/transaction_bloc.dart';
@@ -99,26 +102,61 @@ class _TransactionListPageState extends State<TransactionListPage> {
   }
 
   Future<void> _showCreateTransactionSheet(BuildContext context) async {
-    final titleController = TextEditingController();
-    final refController = TextEditingController();
-    final partnerController = TextEditingController();
-    final vehicleController = TextEditingController();
-    final targetController = TextEditingController(text: '3');
     TransactionType selectedType = TransactionType.inbound;
 
     List<GudangModel> gudangs = [];
     List<ProductLokasiModel> lokasis = [];
+    List<SupplierModel> suppliers = [];
+    List<DoHdrModel> deliveryOrders = [];
+    List<MachineItemModel> productSns = [];
+
     try {
-      final gList = await _bloc.repository.getGudangList();
-      final lList = await _bloc.repository.getProductLokasiList();
-      gudangs = gList;
-      lokasis = lList;
+      gudangs = await _bloc.repository.getGudangList();
+    } catch (_) {}
+    try {
+      lokasis = await _bloc.repository.getProductLokasiList();
+    } catch (_) {}
+    try {
+      suppliers = await _bloc.repository.getSupplierList();
+    } catch (_) {}
+    try {
+      deliveryOrders = await _bloc.repository.getDoList();
+    } catch (_) {}
+    try {
+      productSns = await _bloc.repository.getProductSnList();
     } catch (_) {}
 
     if (!context.mounted) return;
 
-    GudangModel? selectedGudang = gudangs.isNotEmpty ? gudangs.first : null;
-    ProductLokasiModel? selectedLokasi = lokasis.isNotEmpty ? lokasis.first : null;
+    int? selectedGudangId = gudangs.isNotEmpty ? gudangs.first.idGudang : null;
+    int? selectedSupplierId = suppliers.isNotEmpty
+        ? suppliers.first.idSuppliers
+        : null;
+    int? selectedDoId = deliveryOrders.isNotEmpty
+        ? deliveryOrders.first.idDo
+        : null;
+
+    final initialLokasiList = selectedGudangId != null
+        ? lokasis
+              .where(
+                (l) => l.idGudang == null || l.idGudang == selectedGudangId,
+              )
+              .toList()
+        : lokasis;
+    int? selectedLokasiId = initialLokasiList.isNotEmpty
+        ? initialLokasiList.first.idProductLokasi
+        : null;
+
+    final initialSnList = selectedGudangId != null
+        ? productSns
+              .where(
+                (s) => s.idGudang == null || s.idGudang == selectedGudangId,
+              )
+              .toList()
+        : productSns;
+    String? selectedSn = initialSnList.isNotEmpty
+        ? initialSnList.first.serialNumber
+        : null;
 
     showModalBottomSheet<void>(
       context: context,
@@ -133,9 +171,150 @@ class _TransactionListPageState extends State<TransactionListPage> {
             final isInbound = selectedType == TransactionType.inbound;
             const greenColor = Color(0xFF2E7D32);
 
-            final filteredLokasi = selectedGudang != null
-                ? lokasis.where((l) => l.idGudang == null || l.idGudang == selectedGudang!.idGudang).toList()
+            // Deduplikasi Master Gudang (m_gudang)
+            final uniqueGudangs = <int, GudangModel>{};
+            for (final g in gudangs) {
+              uniqueGudangs.putIfAbsent(g.idGudang, () => g);
+            }
+            final deduplicatedGudangs = uniqueGudangs.values.toList();
+            if (selectedGudangId == null ||
+                !deduplicatedGudangs.any(
+                  (g) => g.idGudang == selectedGudangId,
+                )) {
+              selectedGudangId = deduplicatedGudangs.isNotEmpty
+                  ? deduplicatedGudangs.first.idGudang
+                  : null;
+            }
+            GudangModel? effectiveGudang;
+            for (final g in deduplicatedGudangs) {
+              if (g.idGudang == selectedGudangId) {
+                effectiveGudang = g;
+                break;
+              }
+            }
+
+            // Deduplikasi & filter Lokasi Rak (m_product_lokasi) sesuai gudang terpilih
+            final filteredLokasi = selectedGudangId != null
+                ? lokasis
+                      .where(
+                        (l) =>
+                            l.idGudang == null ||
+                            l.idGudang == selectedGudangId,
+                      )
+                      .toList()
                 : lokasis;
+            final uniqueLokasi = <int, ProductLokasiModel>{};
+            for (final l in filteredLokasi) {
+              uniqueLokasi.putIfAbsent(l.idProductLokasi, () => l);
+            }
+            final deduplicatedLokasi = uniqueLokasi.values.toList();
+            if (selectedLokasiId == null ||
+                !deduplicatedLokasi.any(
+                  (l) => l.idProductLokasi == selectedLokasiId,
+                )) {
+              selectedLokasiId = deduplicatedLokasi.isNotEmpty
+                  ? deduplicatedLokasi.first.idProductLokasi
+                  : null;
+            }
+            ProductLokasiModel? effectiveLokasi;
+            for (final l in deduplicatedLokasi) {
+              if (l.idProductLokasi == selectedLokasiId) {
+                effectiveLokasi = l;
+                break;
+              }
+            }
+
+            // Deduplikasi Master Supplier (m_suppliers)
+            final uniqueSuppliers = <int, SupplierModel>{};
+            for (final s in suppliers) {
+              uniqueSuppliers.putIfAbsent(s.idSuppliers, () => s);
+            }
+            final deduplicatedSuppliers = uniqueSuppliers.values.toList();
+            if (selectedSupplierId == null ||
+                !deduplicatedSuppliers.any(
+                  (s) => s.idSuppliers == selectedSupplierId,
+                )) {
+              selectedSupplierId = deduplicatedSuppliers.isNotEmpty
+                  ? deduplicatedSuppliers.first.idSuppliers
+                  : null;
+            }
+            SupplierModel? effectiveSupplier;
+            for (final s in deduplicatedSuppliers) {
+              if (s.idSuppliers == selectedSupplierId) {
+                effectiveSupplier = s;
+                break;
+              }
+            }
+
+            // Deduplikasi Delivery Order (tb_do_hdr)
+            final uniqueDos = <int, DoHdrModel>{};
+            for (final d in deliveryOrders) {
+              uniqueDos.putIfAbsent(d.idDo, () => d);
+            }
+            final deduplicatedDos = uniqueDos.values.toList();
+            if (selectedDoId == null ||
+                !deduplicatedDos.any((d) => d.idDo == selectedDoId)) {
+              selectedDoId = deduplicatedDos.isNotEmpty
+                  ? deduplicatedDos.first.idDo
+                  : null;
+            }
+            DoHdrModel? effectiveDo;
+            for (final d in deduplicatedDos) {
+              if (d.idDo == selectedDoId) {
+                effectiveDo = d;
+                break;
+              }
+            }
+
+            // Deduplikasi Nomor Seri Produk (m_product_sn) sesuai gudang
+            final filteredSns = selectedGudangId != null
+                ? productSns
+                      .where(
+                        (s) =>
+                            s.idGudang == null ||
+                            s.idGudang == selectedGudangId,
+                      )
+                      .toList()
+                : productSns;
+            final uniqueSns = <String, MachineItemModel>{};
+            for (final s in filteredSns) {
+              final key = s.serialNumber.trim().toUpperCase();
+              if (key.isNotEmpty) {
+                uniqueSns.putIfAbsent(key, () => s);
+              }
+            }
+            final deduplicatedSns = uniqueSns.values.toList();
+            if (selectedSn == null ||
+                !deduplicatedSns.any(
+                  (s) =>
+                      s.serialNumber.trim().toUpperCase() ==
+                      selectedSn?.trim().toUpperCase(),
+                )) {
+              selectedSn = deduplicatedSns.isNotEmpty
+                  ? deduplicatedSns.first.serialNumber
+                  : null;
+            }
+            MachineItemModel? effectiveSn;
+            for (final s in deduplicatedSns) {
+              if (s.serialNumber.trim().toUpperCase() ==
+                  selectedSn?.trim().toUpperCase()) {
+                effectiveSn = s;
+                break;
+              }
+            }
+
+            // Judul transaksi otomatis dibuat berdasarkan pilihan dropdown transaksi (Tanpa Input Text)
+            final autoTitle = isInbound
+                ? (effectiveSupplier != null
+                      ? 'Penerimaan Stok - ${effectiveSupplier.nmSuppliers}'
+                      : (effectiveDo != null
+                            ? 'Penerimaan ${effectiveDo.codeDo}'
+                            : 'Penerimaan Stok ${effectiveGudang?.codeGudang ?? "Gudang"}'))
+                : (effectiveDo != null
+                      ? 'Pengiriman ${effectiveDo.codeDo} - ${effectiveDo.nmCustomers ?? ""}'
+                      : (effectiveSupplier != null
+                            ? 'Pengiriman ke ${effectiveSupplier.nmSuppliers}'
+                            : 'Pengiriman Barang ${effectiveGudang?.codeGudang ?? "Gudang"}'));
 
             return Padding(
               padding: EdgeInsets.only(
@@ -157,11 +336,14 @@ class _TransactionListPageState extends State<TransactionListPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Buat Transaksi Warehouse',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          const Expanded(
+                            child: Text(
+                              'Buat Transaksi Inbound / Outbound',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           IconButton(
@@ -172,7 +354,7 @@ class _TransactionListPageState extends State<TransactionListPage> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Pilihan Jenis Transaksi
+                      // Pilihan Jenis Transaksi: Inbound vs Outbound
                       Row(
                         children: [
                           Expanded(
@@ -186,10 +368,9 @@ class _TransactionListPageState extends State<TransactionListPage> {
                               ),
                               onSelected: (val) {
                                 if (val) {
-                                  setModalState(
-                                    () =>
-                                        selectedType = TransactionType.inbound,
-                                  );
+                                  setModalState(() {
+                                    selectedType = TransactionType.inbound;
+                                  });
                                 }
                               },
                             ),
@@ -208,68 +389,338 @@ class _TransactionListPageState extends State<TransactionListPage> {
                               ),
                               onSelected: (val) {
                                 if (val) {
-                                  setModalState(
-                                    () =>
-                                        selectedType = TransactionType.outbound,
-                                  );
+                                  setModalState(() {
+                                    selectedType = TransactionType.outbound;
+                                  });
                                 }
                               },
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
-                      // Dropdown Master Gudang (m_gudang / GudangController.php)
-                      if (gudangs.isNotEmpty) ...[
-                        Text(
-                          'Pilih Gudang (GudangController)',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: colorScheme.onSurface,
+                      // Info Judul Transaksi Otomatis (Tanpa Input Text)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: (isInbound ? greenColor : colorScheme.primary)
+                              .withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color:
+                                (isInbound ? greenColor : colorScheme.primary)
+                                    .withValues(alpha: 0.25),
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<GudangModel>(
-                              value: selectedGudang,
-                              isExpanded: true,
-                              items: gudangs.map((g) {
-                                return DropdownMenuItem<GudangModel>(
-                                  value: g,
-                                  child: Text('${g.nmGudang} (${g.codeGudang})'),
-                                );
-                              }).toList(),
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setModalState(() {
-                                    selectedGudang = val;
-                                    final newLocs = lokasis
-                                        .where((l) => l.idGudang == null || l.idGudang == val.idGudang)
-                                        .toList();
-                                    if (newLocs.isNotEmpty) {
-                                      selectedLokasi = newLocs.first;
-                                    }
-                                  });
-                                }
-                              },
+                        child: Row(
+                          children: [
+                            Icon(
+                              isInbound
+                                  ? Icons.input
+                                  : Icons.local_shipping_outlined,
+                              size: 18,
+                              color: isInbound
+                                  ? greenColor
+                                  : colorScheme.primary,
                             ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                autoTitle,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: isInbound
+                                      ? greenColor
+                                      : colorScheme.primary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 1. Dropdown Master Gudang (m_gudang)
+                      Text(
+                        'Pilih Gudang (m_gudang)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: colorScheme.outline.withValues(alpha: 0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int?>(
+                            value: selectedGudangId,
+                            hint: const Text('Pilih Gudang (m_gudang)'),
+                            isExpanded: true,
+                            items: deduplicatedGudangs.isNotEmpty
+                                ? deduplicatedGudangs.map((g) {
+                                    return DropdownMenuItem<int?>(
+                                      value: g.idGudang,
+                                      child: Text(
+                                        '${g.nmGudang} (${g.codeGudang})',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    );
+                                  }).toList()
+                                : [
+                                    const DropdownMenuItem<int?>(
+                                      value: null,
+                                      child: Text(
+                                        'Tidak ada data di tabel m_gudang',
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                            onChanged: deduplicatedGudangs.isNotEmpty
+                                ? (val) {
+                                    if (val != null) {
+                                      setModalState(() {
+                                        selectedGudangId = val;
+                                        final newLocs = lokasis
+                                            .where(
+                                              (l) =>
+                                                  l.idGudang == null ||
+                                                  l.idGudang == val,
+                                            )
+                                            .toList();
+                                        selectedLokasiId = newLocs.isNotEmpty
+                                            ? newLocs.first.idProductLokasi
+                                            : null;
+
+                                        final newSns = productSns
+                                            .where(
+                                              (s) =>
+                                                  s.idGudang == null ||
+                                                  s.idGudang == val,
+                                            )
+                                            .toList();
+                                        selectedSn = newSns.isNotEmpty
+                                            ? newSns.first.serialNumber
+                                            : null;
+                                      });
+                                    }
+                                  }
+                                : null,
                           ),
                         ),
-                        const SizedBox(height: 14),
-                      ],
+                      ),
+                      const SizedBox(height: 14),
 
-                      // Dropdown Master Lokasi (m_product_lokasi / ProductLokasiController.php)
-                      if (filteredLokasi.isNotEmpty) ...[
+                      // 2. Dropdown Supplier (m_suppliers) - Tersedia untuk Inbound & Outbound (Murni Dropdown)
+                      Text(
+                        'Pilih Supplier (m_suppliers)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: isInbound ? greenColor : colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color:
+                                (isInbound ? greenColor : colorScheme.outline)
+                                    .withValues(alpha: 0.35),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int?>(
+                            value: selectedSupplierId,
+                            hint: const Text('Pilih Supplier (m_suppliers)'),
+                            isExpanded: true,
+                            items: deduplicatedSuppliers.isNotEmpty
+                                ? deduplicatedSuppliers.map((s) {
+                                    return DropdownMenuItem<int?>(
+                                      value: s.idSuppliers,
+                                      child: Text(
+                                        s.nmSuppliers,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList()
+                                : [
+                                    const DropdownMenuItem<int?>(
+                                      value: null,
+                                      child: Text(
+                                        'Belum ada data supplier di tabel m_suppliers',
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                            onChanged: deduplicatedSuppliers.isNotEmpty
+                                ? (val) {
+                                    if (val != null) {
+                                      setModalState(
+                                        () => selectedSupplierId = val,
+                                      );
+                                    }
+                                  }
+                                : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 3. Dropdown Dokumen DO (tb_do_hdr) - Tersedia untuk Inbound & Outbound (Murni Dropdown)
+                      Text(
+                        'Pilih Dokumen DO (tb_do_hdr)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: !isInbound
+                              ? colorScheme.primary
+                              : colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color:
+                                (!isInbound
+                                        ? colorScheme.primary
+                                        : colorScheme.outline)
+                                    .withValues(alpha: 0.35),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int?>(
+                            value: selectedDoId,
+                            hint: const Text('Pilih Dokumen DO (tb_do_hdr)'),
+                            isExpanded: true,
+                            items: deduplicatedDos.isNotEmpty
+                                ? deduplicatedDos.map((d) {
+                                    return DropdownMenuItem<int?>(
+                                      value: d.idDo,
+                                      child: Text(
+                                        '${d.codeDo} • ${d.nmCustomers ?? "-"}',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList()
+                                : [
+                                    const DropdownMenuItem<int?>(
+                                      value: null,
+                                      child: Text(
+                                        'Belum ada data DO di tabel tb_do_hdr',
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                            onChanged: deduplicatedDos.isNotEmpty
+                                ? (val) {
+                                    if (val != null) {
+                                      setModalState(() => selectedDoId = val);
+                                    }
+                                  }
+                                : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 4. Dropdown Nomor Seri Mesin (m_product_sn) - Tersedia untuk Inbound & Outbound (Murni Dropdown)
+                      Text(
+                        'Pilih Nomor Seri (m_product_sn)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: colorScheme.outline.withValues(alpha: 0.3),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String?>(
+                            value: selectedSn,
+                            hint: const Text(
+                              'Pilih Nomor Seri Barang (m_product_sn)',
+                            ),
+                            isExpanded: true,
+                            items: deduplicatedSns.isNotEmpty
+                                ? deduplicatedSns.map((sn) {
+                                    return DropdownMenuItem<String?>(
+                                      value: sn.serialNumber,
+                                      child: Text(
+                                        '${sn.serialNumber} • ${sn.modelName} (${sn.codeGudang ?? sn.brand})',
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 12.5),
+                                      ),
+                                    );
+                                  }).toList()
+                                : [
+                                    const DropdownMenuItem<String?>(
+                                      value: null,
+                                      child: Text(
+                                        'Tidak ada nomor seri di tabel m_product_sn',
+                                        style: TextStyle(
+                                          color: Colors.grey,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                            onChanged: deduplicatedSns.isNotEmpty
+                                ? (val) {
+                                    if (val != null) {
+                                      setModalState(() => selectedSn = val);
+                                    }
+                                  }
+                                : null,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // 5. Dropdown Master Lokasi Rak (m_product_lokasi)
+                      if (deduplicatedLokasi.isNotEmpty) ...[
                         Text(
-                          'Pilih Lokasi Rak (ProductLokasiController)',
+                          'Pilih Lokasi Rak (m_product_lokasi)',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -280,18 +731,24 @@ class _TransactionListPageState extends State<TransactionListPage> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           decoration: BoxDecoration(
-                            border: Border.all(color: colorScheme.outline.withValues(alpha: 0.3)),
+                            border: Border.all(
+                              color: colorScheme.outline.withValues(alpha: 0.3),
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: DropdownButtonHideUnderline(
-                            child: DropdownButton<ProductLokasiModel>(
-                              value: selectedLokasi,
+                            child: DropdownButton<int?>(
+                              value: selectedLokasiId,
+                              hint: const Text(
+                                'Pilih Lokasi Rak (m_product_lokasi)',
+                              ),
                               isExpanded: true,
-                              items: filteredLokasi.map((l) {
-                                return DropdownMenuItem<ProductLokasiModel>(
-                                  value: l,
+                              items: deduplicatedLokasi.map((l) {
+                                return DropdownMenuItem<int?>(
+                                  value: l.idProductLokasi,
                                   child: Text(
-                                    (l.completeName != null && l.completeName!.isNotEmpty)
+                                    (l.completeName != null &&
+                                            l.completeName!.isNotEmpty)
                                         ? l.completeName!
                                         : l.nmProductLokasi,
                                     overflow: TextOverflow.ellipsis,
@@ -301,7 +758,7 @@ class _TransactionListPageState extends State<TransactionListPage> {
                               }).toList(),
                               onChanged: (val) {
                                 if (val != null) {
-                                  setModalState(() => selectedLokasi = val);
+                                  setModalState(() => selectedLokasiId = val);
                                 }
                               },
                             ),
@@ -310,73 +767,7 @@ class _TransactionListPageState extends State<TransactionListPage> {
                         const SizedBox(height: 14),
                       ],
 
-                      AppTextField(
-                        label: 'Judul Transaksi',
-                        hintText: isInbound
-                            ? 'Contoh: Penerimaan Kontainer Gudang ${selectedGudang?.codeGudang ?? "EMM"}'
-                            : 'Contoh: Pengiriman Truk Wingbox dari ${selectedGudang?.nmGudang ?? "Gudang"}',
-                        controller: titleController,
-                        prefixIcon: const Icon(Icons.title),
-                      ),
-                      const SizedBox(height: 12),
-
-                      AppTextField(
-                        label: isInbound
-                            ? 'Nomor Seri / Kontainer / Ref (m_product_sn)'
-                            : 'Nomor Surat Jalan / DO',
-                        hintText: isInbound
-                            ? 'Contoh: 20.204.01794.28.04951'
-                            : 'Contoh: SJ-EMM-2026/XI/881',
-                        controller: refController,
-                        prefixIcon: const Icon(Icons.description_outlined),
-                      ),
-                      const SizedBox(height: 12),
-
-                      AppTextField(
-                        label: isInbound
-                            ? 'Supplier / Entitas Pengirim'
-                            : 'Klien / Perusahaan Tujuan',
-                        hintText: isInbound
-                            ? 'Contoh: ${selectedGudang?.nmGudang ?? "Yamazaki Mazak Corp"}'
-                            : 'Contoh: PT Astra Honda Motor',
-                        controller: partnerController,
-                        prefixIcon: const Icon(Icons.business),
-                      ),
-                      const SizedBox(height: 12),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: AppTextField(
-                              label: isInbound
-                                  ? 'No. Seal Kontainer'
-                                  : 'No. Polisi Truk',
-                              hintText: isInbound
-                                  ? 'SEAL-${selectedGudang?.codeGudang ?? "EMM"}-901'
-                                  : 'B 9482 TXT',
-                              controller: vehicleController,
-                              prefixIcon: Icon(
-                                isInbound
-                                    ? Icons.lock_outline
-                                    : Icons.local_shipping,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            flex: 1,
-                            child: AppTextField(
-                              label: 'Target Unit',
-                              hintText: 'Jumlah',
-                              controller: targetController,
-                              keyboardType: TextInputType.number,
-                              prefixIcon: const Icon(Icons.pin),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
 
                       Row(
                         children: [
@@ -390,32 +781,22 @@ class _TransactionListPageState extends State<TransactionListPage> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: AppButton(
-                              text: 'Simpan & Buka Scan',
+                              text: 'Simpan & Scan',
                               type: AppButtonType.primary,
                               backgroundColor: isInbound
                                   ? greenColor
                                   : colorScheme.primary,
                               onPressed: () {
-                                final title =
-                                    titleController.text.trim().isEmpty
-                                    ? (isInbound
-                                          ? 'Penerimaan Stok ${selectedGudang?.nmGudang ?? "Gudang"}'
-                                          : 'Pengiriman Armada Truk')
-                                    : titleController.text.trim();
-                                final ref = refController.text.trim().isEmpty
-                                    ? '20.204.01794.28.${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}'
-                                    : refController.text.trim();
-                                final partner =
-                                    partnerController.text.trim().isEmpty
-                                    ? (isInbound
-                                          ? (selectedGudang?.nmGudang ?? 'Logistik Gudang Pusat')
-                                          : 'Klien Manufaktur')
-                                    : partnerController.text.trim();
-                                final target =
-                                    int.tryParse(
-                                      targetController.text.trim(),
-                                    ) ??
-                                    3;
+                                final title = autoTitle;
+                                final ref =
+                                    effectiveDo?.codeDo ??
+                                    (effectiveSn?.serialNumber ?? '-');
+                                final partner = isInbound
+                                    ? (effectiveSupplier?.nmSuppliers ??
+                                          (effectiveDo?.nmCustomers ?? '-'))
+                                    : (effectiveDo?.nmCustomers ??
+                                          (effectiveSupplier?.nmSuppliers ??
+                                              '-'));
 
                                 final newTrx = WarehouseTransaction(
                                   id: 'TRX-${isInbound ? 'INB' : 'OUT'}-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
@@ -423,13 +804,24 @@ class _TransactionListPageState extends State<TransactionListPage> {
                                   title: title,
                                   referenceNumber: ref,
                                   partnerName: partner,
-                                  vehicleOrContainerId: vehicleController.text
-                                      .trim(),
+                                  vehicleOrContainerId: '',
                                   createdAt: DateTime.now(),
-                                  targetQuantity: target,
+                                  targetQuantity: 1,
                                   status: TransactionStatus.inProgress,
-                                  operatorName: 'Operator ${selectedGudang?.codeGudang ?? "EMM"}',
-                                  notes: 'Gudang: ${selectedGudang?.nmGudang ?? "-"} | Lokasi: ${selectedLokasi?.completeName ?? "-"}',
+                                  operatorName:
+                                      'Operator ${effectiveGudang?.codeGudang ?? "EMM"}',
+                                  notes:
+                                      'Gudang: ${effectiveGudang?.nmGudang ?? "-"} | Lokasi: ${effectiveLokasi?.completeName ?? effectiveLokasi?.nmProductLokasi ?? "-"}',
+                                  idGudang: effectiveGudang?.idGudang,
+                                  nmGudang: effectiveGudang?.nmGudang,
+                                  idSupplier: effectiveSupplier?.idSuppliers,
+                                  nmSupplier: effectiveSupplier?.nmSuppliers,
+                                  idDo: effectiveDo?.idDo,
+                                  codeDo: effectiveDo?.codeDo,
+                                  idProductLokasi:
+                                      effectiveLokasi?.idProductLokasi,
+                                  nmProductLokasi:
+                                      effectiveLokasi?.nmProductLokasi,
                                 );
 
                                 _bloc.add(CreateNewTransaction(newTrx));
@@ -520,9 +912,9 @@ class _TransactionListPageState extends State<TransactionListPage> {
                     children: [
                       Expanded(
                         child: _StatCard(
-                          title: 'Inbound Mesin Impor',
-                          value: '$inboundCount Kontainer',
-                          subtitle: 'Penerimaan Luar Negeri',
+                          title: 'Inbound',
+                          value: '$inboundCount Transaksi',
+                          subtitle: 'Penerimaan Barang',
                           icon: Icons.archive_outlined,
                           iconColor: greenColor,
                           bgColor: greenColor.withValues(alpha: 0.12),
@@ -531,9 +923,9 @@ class _TransactionListPageState extends State<TransactionListPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _StatCard(
-                          title: 'Outbound Muat Truk',
-                          value: '$outboundCount Armada',
-                          subtitle: 'Pengiriman Truk Klien',
+                          title: 'Outbound',
+                          value: '$outboundCount Transaksi',
+                          subtitle: 'Pengiriman Barang',
                           icon: Icons.unarchive_outlined,
                           iconColor: colorScheme.primary,
                           bgColor: colorScheme.primary.withValues(alpha: 0.12),
@@ -556,7 +948,7 @@ class _TransactionListPageState extends State<TransactionListPage> {
                       Expanded(
                         child: _QuickScannerButton(
                           label: 'Scan Inbound',
-                          sublabel: 'Kontainer Mesin Impor',
+                          sublabel: 'Penerimaan Barang',
                           icon: Icons.qr_code_scanner,
                           color: greenColor,
                           onTap: () => _openScannerForType(
@@ -570,7 +962,7 @@ class _TransactionListPageState extends State<TransactionListPage> {
                       Expanded(
                         child: _QuickScannerButton(
                           label: 'Scan Outbound',
-                          sublabel: 'Pemuatan Truk Klien',
+                          sublabel: 'Pengiriman Barang',
                           icon: Icons.barcode_reader,
                           color: colorScheme.primary,
                           onTap: () => _openScannerForType(

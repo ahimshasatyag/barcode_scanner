@@ -30,17 +30,28 @@ class MachineItemModel extends MachineItem {
         json['serialNumber'] as String? ??
         '';
 
-    final idProductSn = json['id_product_sn'] as int?;
-    final idProduct = json['id_product'] as int?;
-    final nqty = json['nqty'] as int? ?? 1;
+    final idProductSn = json['id_product_sn'] is int
+        ? json['id_product_sn'] as int
+        : int.tryParse(json['id_product_sn']?.toString() ?? '') ??
+          int.tryParse(json['id']?.toString() ?? '');
+    final idProduct = json['id_product'] is int
+        ? json['id_product'] as int
+        : int.tryParse(json['id_product']?.toString() ?? '');
+    final nqty = json['nqty'] is int
+        ? json['nqty'] as int
+        : int.tryParse(json['nqty']?.toString() ?? '') ?? 1;
 
-    final idGudang = json['id_gudang'] as int?;
+    final idGudang = json['id_gudang'] is int
+        ? json['id_gudang'] as int
+        : int.tryParse(json['id_gudang']?.toString() ?? '');
     final nmGudang = json['nm_gudang'] as String? ??
         json['gudang']?['nm_gudang'] as String?;
     final codeGudang = json['code_gudang'] as String? ??
         json['gudang']?['code_gudang'] as String?;
 
-    final idProductLokasi = json['id_product_lokasi'] as int?;
+    final idProductLokasi = json['id_product_lokasi'] is int
+        ? json['id_product_lokasi'] as int
+        : int.tryParse(json['id_product_lokasi']?.toString() ?? '');
     final nmProductLokasi = json['nm_product_lokasi'] as String? ??
         json['lokasi']?['nm_product_lokasi'] as String?;
     final completeName = json['complete_name'] as String? ??

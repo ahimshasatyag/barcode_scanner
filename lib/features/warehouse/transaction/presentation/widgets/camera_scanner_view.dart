@@ -41,16 +41,9 @@ class _CameraScannerViewState extends State<CameraScannerView>
 
   final TextEditingController _manualInputController = TextEditingController();
 
-  // Daftar barcode nomor seri mesin real dari database backend (ProductSnController.php)
-  late final List<Map<String, String>> _quickBarcodes = widget.customQuickBarcodes ?? const [
-    {'code': 'BC-MZK-8501', 'label': 'Mazak VCS 430A'},
-    {'code': '20.204.01794.28.04951', 'label': 'SN 20.204 (GKU Stock)'},
-    {'code': '20.204.01785.28.04950', 'label': 'SN 20.204 (GKU Stock)'},
-    {'code': '20.207.01693.28.04949', 'label': 'SN 20.207 (GSS Sirie)'},
-    {'code': '10.102.01527.27.04692', 'label': 'SN 10.102 (EMM Head Office)'},
-    {'code': '20.207.01567.28.04948', 'label': 'SN 20.207 (Sparepart)'},
-    {'code': '20.203.00409.28.04947', 'label': 'SN 20.203 (Produksi)'},
-  ];
+  // Daftar barcode nomor seri barang murni dari database (tanpa dummy)
+  late final List<Map<String, String>> _quickBarcodes =
+      widget.customQuickBarcodes ?? const [];
 
   @override
   void initState() {
@@ -99,8 +92,6 @@ class _CameraScannerViewState extends State<CameraScannerView>
         return;
       }
     }
-
-    _triggerScan('BC-MZK-8503');
   }
 
   void _showManualInputDialog() {
@@ -153,7 +144,7 @@ class _CameraScannerViewState extends State<CameraScannerView>
                 const SizedBox(height: 16),
                 AppTextField(
                   label: 'Nomor Barcode / Serial Number (m_product_sn)',
-                  hintText: 'Contoh: 20.204.01794.28.04951 atau 10.102.01527.27.04692',
+                  hintText: 'Ketik nomor seri atau scan barcode',
                   controller: _manualInputController,
                   prefixIcon: const Icon(Icons.qr_code),
                 ),
@@ -414,86 +405,124 @@ class _CameraScannerViewState extends State<CameraScannerView>
                 const SizedBox(height: 8),
 
                 // Bagian Barcode Uji Cepat dengan Indikator Status
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Pilih Barcode Uji Cepat:',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    InkWell(
-                      onTap: _showManualInputDialog,
-                      child: Text(
-                        'Input Manual >',
+                if (_quickBarcodes.isNotEmpty) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Pilih Barcode m_product_sn:',
                         style: TextStyle(
-                          color: colorScheme.primary,
+                          color: Colors.white.withValues(alpha: 0.85),
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: _quickBarcodes.map((item) {
-                      final code = item['code']!;
-                      final isAlreadyScanned = widget.scannedBarcodes.contains(
-                        code,
-                      );
-
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ActionChip(
-                          visualDensity: VisualDensity.compact,
-                          backgroundColor: isAlreadyScanned
-                              ? (isDark
-                                    ? const Color(0xFF1B3320)
-                                    : const Color(0xFFE8F5E9))
-                              : (isDark
-                                    ? const Color(0xFF263238)
-                                    : Colors.white.withValues(alpha: 0.92)),
-                          avatar: Icon(
-                            isAlreadyScanned
-                                ? Icons.check_circle
-                                : Icons.barcode_reader,
-                            size: 13,
-                            color: isAlreadyScanned
-                                ? const Color(0xFF2E7D32)
-                                : Colors.blueAccent,
+                      InkWell(
+                        onTap: _showManualInputDialog,
+                        child: Text(
+                          'Input Manual >',
+                          style: TextStyle(
+                            color: colorScheme.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
-                          label: Text(
-                            isAlreadyScanned ? '$code (OK)' : code,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _quickBarcodes.map((item) {
+                        final code = item['code']!;
+                        final isAlreadyScanned = widget.scannedBarcodes
+                            .contains(code);
+
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: ActionChip(
+                            visualDensity: VisualDensity.compact,
+                            backgroundColor: isAlreadyScanned
+                                ? (isDark
+                                      ? const Color(0xFF1B3320)
+                                      : const Color(0xFFE8F5E9))
+                                : (isDark
+                                      ? const Color(0xFF263238)
+                                      : Colors.white.withValues(alpha: 0.92)),
+                            avatar: Icon(
+                              isAlreadyScanned
+                                  ? Icons.check_circle
+                                  : Icons.barcode_reader,
+                              size: 13,
                               color: isAlreadyScanned
                                   ? const Color(0xFF2E7D32)
-                                  : (isDark ? Colors.white : Colors.black87),
+                                  : Colors.blueAccent,
                             ),
+                            label: Text(
+                              isAlreadyScanned ? '$code (OK)' : code,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isAlreadyScanned
+                                    ? const Color(0xFF2E7D32)
+                                    : (isDark ? Colors.white : Colors.black87),
+                              ),
+                            ),
+                            onPressed: () {
+                              if (isAlreadyScanned) {
+                                AppSnackBar.showWarning(
+                                  context,
+                                  'Barcode $code sudah terdaftar di transaksi ini.',
+                                );
+                              } else {
+                                _triggerScan(code);
+                              }
+                            },
                           ),
-                          onPressed: () {
-                            if (isAlreadyScanned) {
-                              AppSnackBar.showWarning(
-                                context,
-                                'Barcode $code sudah terdaftar di transaksi ini.',
-                              );
-                            } else {
-                              _triggerScan(code);
-                            }
-                          },
-                        ),
-                      );
-                    }).toList(),
+                        );
+                      }).toList(),
+                    ),
                   ),
-                ),
+                ] else ...[
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: InkWell(
+                      onTap: _showManualInputDialog,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: colorScheme.primary),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.keyboard,
+                              size: 14,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Input Nomor Seri Manual',
+                              style: TextStyle(
+                                color: colorScheme.primary,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

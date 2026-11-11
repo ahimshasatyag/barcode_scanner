@@ -1,7 +1,10 @@
 import '../entities/scan_result.dart';
 import '../entities/warehouse_transaction.dart';
+import '../../data/models/do_hdr_model.dart';
 import '../../data/models/gudang_model.dart';
+import '../../data/models/machine_item_model.dart';
 import '../../data/models/product_lokasi_model.dart';
+import '../../data/models/supplier_model.dart';
 
 /// Kontrak repositori transaksi warehouse
 abstract class TransactionRepository {
@@ -30,10 +33,17 @@ abstract class TransactionRepository {
   });
 
   // =========================================================================
-  // Integrasi Database Backend (ProductSn, ProductLokasi, Gudang)
+  // Integrasi Database Backend (m_gudang, m_product_lokasi, m_product_sn, m_suppliers, tb_do_hdr)
   // =========================================================================
   Future<List<GudangModel>> getGudangList();
   Future<List<ProductLokasiModel>> getProductLokasiList({int? idGudang});
+  Future<List<SupplierModel>> getSupplierList();
+  Future<List<DoHdrModel>> getDoList();
+  Future<List<MachineItemModel>> getProductSnList({
+    int? idGudang,
+    int? idProductLokasi,
+    String? search,
+  });
   Future<Map<String, dynamic>> updateProductLocation({
     required String sn,
     required int idProductLokasi,

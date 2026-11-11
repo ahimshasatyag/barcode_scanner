@@ -31,36 +31,36 @@ extension TransactionTypeX on TransactionType {
   String get description {
     switch (this) {
       case TransactionType.inbound:
-        return 'Penerimaan Kontainer Mesin Impor';
+        return 'Penerimaan Barang';
       case TransactionType.outbound:
-        return 'Pemuatan Truk Pengiriman Klien';
+        return 'Pengiriman Barang';
     }
   }
 
   String get refLabel {
     switch (this) {
       case TransactionType.inbound:
-        return 'No. Kontainer / B/L';
+        return 'No. Dokumen';
       case TransactionType.outbound:
-        return 'No. Surat Jalan / DO';
+        return 'No. Dokumen (DO)';
     }
   }
 
   String get partnerLabel {
     switch (this) {
       case TransactionType.inbound:
-        return 'Eksportir / Pabrik Asal';
+        return 'Supplier';
       case TransactionType.outbound:
-        return 'Klien / Perusahaan Tujuan';
+        return 'Customer';
     }
   }
 
   String get vehicleLabel {
     switch (this) {
       case TransactionType.inbound:
-        return 'No. Seal Kontainer';
+        return 'Kendaraan';
       case TransactionType.outbound:
-        return 'No. Polisi Truk';
+        return 'Kendaraan';
     }
   }
 }
@@ -88,7 +88,7 @@ extension TransactionStatusX on TransactionStatus {
   }
 }
 
-/// Entitas Transaksi Pergudangan Mesin
+/// Entitas Transaksi Pergudangan Mesin (Sesuai t_transaksi_gudang)
 class WarehouseTransaction {
   const WarehouseTransaction({
     required this.id,
@@ -104,9 +104,17 @@ class WarehouseTransaction {
     this.operatorName,
     this.notes,
     this.completedAt,
+    this.idGudang,
+    this.nmGudang,
+    this.idSupplier,
+    this.nmSupplier,
+    this.idDo,
+    this.codeDo,
+    this.idProductLokasi,
+    this.nmProductLokasi,
   });
 
-  /// ID unik transaksi (misal: `TRX-INB-20261109-001`)
+  /// ID unik transaksi (misal: `TRX-INB-20261109-001` atau id_transaksi)
   final String id;
 
   /// Tipe transaksi (Inbound atau Outbound)
@@ -118,7 +126,7 @@ class WarehouseTransaction {
   /// Nomor referensi dokumen (No. Kontainer atau No. Surat Jalan / Delivery Order)
   final String referenceNumber;
 
-  /// Nama partner (Shipper Jepang/Jerman atau Klien Manufaktur)
+  /// Nama partner (Supplier Inbound atau Klien/Customer Outbound)
   final String partnerName;
 
   /// Nomor armada / identitas kontainer (Plat Truk atau No Seal Kontainer)
@@ -133,7 +141,7 @@ class WarehouseTransaction {
   /// Status pemindaian transaksi
   final TransactionStatus status;
 
-  /// Daftar mesin yang sudah berhasil dipindai
+  /// Daftar mesin yang sudah berhasil dipindai (t_transaksi_gudang_item)
   final List<MachineItem> items;
 
   /// Nama operator warehouse yang bertugas
@@ -144,6 +152,22 @@ class WarehouseTransaction {
 
   /// Waktu saat transaksi dinyatakan selesai
   final DateTime? completedAt;
+
+  /// Relasi Master Gudang (m_gudang.id_gudang)
+  final int? idGudang;
+  final String? nmGudang;
+
+  /// Relasi Master Supplier (m_suppliers.id_suppliers) untuk Inbound
+  final int? idSupplier;
+  final String? nmSupplier;
+
+  /// Relasi Delivery Order (tb_do_hdr.id_do) untuk Outbound
+  final int? idDo;
+  final String? codeDo;
+
+  /// Relasi Master Lokasi Rak (m_product_lokasi.id_product_lokasi)
+  final int? idProductLokasi;
+  final String? nmProductLokasi;
 
   /// Jumlah mesin yang telah dipindai
   int get scannedQuantity => items.length;
@@ -174,6 +198,14 @@ class WarehouseTransaction {
     String? operatorName,
     String? notes,
     DateTime? completedAt,
+    int? idGudang,
+    String? nmGudang,
+    int? idSupplier,
+    String? nmSupplier,
+    int? idDo,
+    String? codeDo,
+    int? idProductLokasi,
+    String? nmProductLokasi,
   }) {
     return WarehouseTransaction(
       id: id ?? this.id,
@@ -189,6 +221,14 @@ class WarehouseTransaction {
       operatorName: operatorName ?? this.operatorName,
       notes: notes ?? this.notes,
       completedAt: completedAt ?? this.completedAt,
+      idGudang: idGudang ?? this.idGudang,
+      nmGudang: nmGudang ?? this.nmGudang,
+      idSupplier: idSupplier ?? this.idSupplier,
+      nmSupplier: nmSupplier ?? this.nmSupplier,
+      idDo: idDo ?? this.idDo,
+      codeDo: codeDo ?? this.codeDo,
+      idProductLokasi: idProductLokasi ?? this.idProductLokasi,
+      nmProductLokasi: nmProductLokasi ?? this.nmProductLokasi,
     );
   }
 }

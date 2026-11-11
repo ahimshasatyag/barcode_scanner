@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:barcode/shared/theme/theme.dart';
 import 'package:barcode/shared/widgets/widgets.dart';
+import '../../data/models/machine_item_model.dart';
 import '../../domain/entities/warehouse_transaction.dart';
 import '../bloc/transaction_bloc.dart';
 import '../bloc/transaction_event.dart';
@@ -26,11 +27,14 @@ class ScannerPage extends StatefulWidget {
 class _ScannerPageState extends State<ScannerPage> {
   late WarehouseTransaction _currentTransaction;
   StreamSubscription<TransactionState>? _blocSubscription;
+  List<MachineItemModel> _availableSns = [];
+  MachineItemModel? _selectedDropdownSn;
 
   @override
   void initState() {
     super.initState();
     _currentTransaction = widget.transaction;
+    _loadProductSns();
 
     _blocSubscription = widget.bloc.stream.listen((state) {
       if (!mounted) return;
@@ -62,6 +66,22 @@ class _ScannerPageState extends State<ScannerPage> {
         });
       }
     });
+  }
+
+  Future<void> _loadProductSns() async {
+    try {
+      final list = await widget.bloc.repository.getProductSnList(
+        idGudang: _currentTransaction.idGudang,
+      );
+      if (mounted) {
+        setState(() {
+          _availableSns = list;
+          if (list.isNotEmpty && _selectedDropdownSn == null) {
+            _selectedDropdownSn = list.first;
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   @override
@@ -109,6 +129,24 @@ class _ScannerPageState extends State<ScannerPage> {
       builder: (context, snapshot) {
         final items = _currentTransaction.items;
         final isCompleted = _currentTransaction.status == TransactionStatus.completed;
+
+        // Deduplikasi nomor seri dari database backend agar DropdownMenuItem memiliki value unik
+        final uniqueSns = <String, MachineItemModel>{};
+        for (final s in _availableSns) {
+          if (s.serialNumber.trim().isNotEmpty) {
+            uniqueSns.putIfAbsent(s.serialNumber.trim().toUpperCase(), () => s);
+          }
+        }
+        final deduplicatedSns = uniqueSns.values.toList();
+
+        final effectiveDropdownSn = deduplicatedSns.any((s) => s.serialNumber.trim().toUpperCase() == _selectedDropdownSn?.serialNumber.trim().toUpperCase())
+            ? deduplicatedSns.firstWhere((s) => s.serialNumber.trim().toUpperCase() == _selectedDropdownSn?.serialNumber.trim().toUpperCase())
+            : (deduplicatedSns.isNotEmpty ? deduplicatedSns.first : null);
+
+        final quickBarcodes = deduplicatedSns.map((s) => {
+          'code': s.serialNumber,
+          'label': '${s.brand} • ${s.serialNumber.length > 12 ? s.serialNumber.substring(s.serialNumber.length - 7) : s.serialNumber}',
+        }).toList();
 
         return Scaffold(
           appBar: AppBar(
@@ -164,20 +202,127 @@ class _ScannerPageState extends State<ScannerPage> {
           body: SafeArea(
             child: Column(
               children: [
+                // Info Relasi Database (m_gudang, m_supplier / tb_do_hdr)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 6, 16, 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF262626) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: colorScheme.outline.withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warehouse_outlined, size: 15, color: accentColor),
+                      const SizedBox(width: 5),
+                      Text(
+                        _currentTransaction.nmGudang ?? 'Gudang (m_gudang)',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        isInbound ? Icons.business_outlined : Icons.description_outlined,
+                        size: 14,
+                        color: colorScheme.outline,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isInbound
+                            ? (_currentTransaction.nmSupplier ?? _currentTransaction.partnerName)
+                            : (_currentTransaction.codeDo ?? _currentTransaction.referenceNumber),
+                        style: TextStyle(fontSize: 12, color: colorScheme.outline, fontWeight: FontWeight.w500),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Dropdown Nomor Seri Database (m_product_sn)
+                if (deduplicatedSns.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: accentColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.qr_code_2, size: 20, color: accentColor),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<MachineItemModel>(
+                              value: effectiveDropdownSn,
+                              hint: Text(
+                                'Pilih Nomor Seri (m_product_sn)',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: accentColor,
+                                ),
+                              ),
+                              isExpanded: true,
+                              items: deduplicatedSns.map((sn) {
+                                final isAlready = items.any((i) => i.serialNumber == sn.serialNumber);
+                                return DropdownMenuItem<MachineItemModel>(
+                                  value: sn,
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          '${sn.serialNumber} • ${sn.modelName}',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: isAlready ? FontWeight.normal : FontWeight.bold,
+                                            color: isAlready ? Colors.grey : null,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isAlready)
+                                        const Icon(Icons.check, size: 14, color: Colors.green),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: isCompleted
+                                  ? null
+                                  : (sn) {
+                                      if (sn != null) {
+                                        setState(() => _selectedDropdownSn = sn);
+                                        _onBarcodeScanned(sn.serialNumber);
+                                      }
+                                    },
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.add_task, size: 18, color: accentColor),
+                          tooltip: 'Scan Nomor Seri Terpilih',
+                          onPressed: isCompleted || _selectedDropdownSn == null
+                              ? null
+                              : () => _onBarcodeScanned(_selectedDropdownSn!.serialNumber),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 // Komponen Kamera Scanner Viewfinder
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16.0, 12.0, 16.0, 8.0),
+                  padding: const EdgeInsets.fromLTRB(16.0, 4.0, 16.0, 4.0),
                   child: SizedBox(
-                    height: 310,
+                    height: 290,
                     child: CameraScannerView(
                       isScanningPaused: isCompleted,
                       scannedBarcodes: items.map((e) => e.barcode).toList(),
+                      customQuickBarcodes: quickBarcodes.isNotEmpty ? quickBarcodes : null,
                       title: isInbound
-                          ? 'Arahkan ke Barcode Mesin Impor'
-                          : 'Arahkan ke Barcode Mesin Muatan Truk',
-                      subtitle: isInbound
-                          ? 'Menerima kontainer ${_currentTransaction.referenceNumber} (${_currentTransaction.partnerName})'
-                          : 'Pemuatan truk ${_currentTransaction.vehicleOrContainerId} untuk ${_currentTransaction.partnerName}',
+                          ? 'Arahkan ke Barcode / Serial Number (Inbound)'
+                          : 'Arahkan ke Barcode / Serial Number (Outbound)',
+                      subtitle:
+                          '${_currentTransaction.title} • ${_currentTransaction.referenceNumber}',
                       onBarcodeScanned: _onBarcodeScanned,
                     ),
                   ),
@@ -190,7 +335,7 @@ class _ScannerPageState extends State<ScannerPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Daftar Mesin Terverifikasi (${items.length})',
+                        'Daftar Barang Terverifikasi (${items.length})',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -221,9 +366,9 @@ class _ScannerPageState extends State<ScannerPage> {
                   child: items.isEmpty
                       ? const Center(
                           child: AppEmptyState(
-                            title: 'Belum Ada Mesin Terpindai',
+                            title: 'Belum Ada Barang Terpindai',
                             message:
-                                'Arahkan kamera ke barcode mesin industri atau pilih barcode uji coba di atas.',
+                                'Arahkan kamera ke barcode serial number atau pilih dari dropdown nomor seri (m_product_sn) di atas.',
                             icon: Icons.qr_code_scanner,
                           ),
                         )

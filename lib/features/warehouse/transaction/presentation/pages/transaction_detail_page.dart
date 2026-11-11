@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:barcode/shared/theme/theme.dart';
 import 'package:barcode/shared/widgets/widgets.dart';
 import '../../data/models/gudang_model.dart';
+import '../../data/models/machine_item_model.dart';
 import '../../data/models/product_lokasi_model.dart';
 import '../../domain/entities/machine_item.dart';
 import '../../domain/entities/warehouse_transaction.dart';
@@ -114,6 +115,190 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
     );
   }
 
+  Future<void> _showAddSnModal(BuildContext context) async {
+    List<MachineItemModel> availableSns = [];
+    try {
+      final list = await widget.bloc.repository.getProductSnList(
+        idGudang: _currentTransaction.idGudang,
+      );
+      availableSns = list;
+    } catch (_) {}
+
+    if (!context.mounted) return;
+
+    MachineItemModel? selectedSn = availableSns.isNotEmpty ? availableSns.first : null;
+    final manualSnController = TextEditingController(text: selectedSn?.serialNumber ?? '');
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) {
+        final colorScheme = modalCtx.colorScheme;
+        final isDark = modalCtx.isDarkMode;
+        final isInbound = _currentTransaction.type == TransactionType.inbound;
+        const greenColor = Color(0xFF2E7D32);
+        final accentColor = isInbound ? greenColor : colorScheme.primary;
+
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            // Deduplikasi daftar nomor seri dari database backend
+            final uniqueSns = <String, MachineItemModel>{};
+            for (final s in availableSns) {
+              if (s.serialNumber.trim().isNotEmpty) {
+                uniqueSns.putIfAbsent(s.serialNumber.trim().toUpperCase(), () => s);
+              }
+            }
+            final deduplicatedSns = uniqueSns.values.toList();
+
+            final effectiveSn = deduplicatedSns.any((s) => s.serialNumber.trim().toUpperCase() == selectedSn?.serialNumber.trim().toUpperCase())
+                ? deduplicatedSns.firstWhere((s) => s.serialNumber.trim().toUpperCase() == selectedSn?.serialNumber.trim().toUpperCase())
+                : (deduplicatedSns.isNotEmpty ? deduplicatedSns.first : null);
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Pilih Nomor Seri (${isInbound ? "Inbound" : "Outbound"})',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(modalCtx),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Pilih nomor seri mesin dari master data m_product_sn untuk diverifikasi ke dalam transaksi ini.',
+                        style: TextStyle(fontSize: 12.5, color: colorScheme.outline),
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (deduplicatedSns.isNotEmpty) ...[
+                        Text(
+                          'Pilih Nomor Seri Database (m_product_sn)',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: accentColor,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: accentColor.withValues(alpha: 0.4)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<MachineItemModel>(
+                              value: effectiveSn,
+                              isExpanded: true,
+                              items: deduplicatedSns.map((sn) {
+                                final isAlready = _currentTransaction.items.any((i) => i.serialNumber == sn.serialNumber);
+                                return DropdownMenuItem<MachineItemModel>(
+                                  value: sn,
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          '${sn.serialNumber} • ${sn.modelName} (${sn.codeGudang ?? "-"})',
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: isAlready ? FontWeight.normal : FontWeight.w600,
+                                            color: isAlready ? Colors.grey : null,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isAlready)
+                                        const Icon(Icons.check, size: 14, color: Colors.green),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() {
+                                    selectedSn = val;
+                                    manualSnController.text = val.serialNumber;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
+                      AppTextField(
+                        label: 'Nomor Seri / Barcode (atau ketik manual)',
+                        hintText: selectedSn?.serialNumber ?? 'Ketik nomor seri atau scan barcode',
+                        controller: manualSnController,
+                        prefixIcon: const Icon(Icons.qr_code_2),
+                      ),
+                      const SizedBox(height: 24),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AppButton(
+                              text: 'Batal',
+                              type: AppButtonType.outlined,
+                              onPressed: () => Navigator.pop(modalCtx),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: AppButton(
+                              text: 'Verifikasi & Tambah',
+                              type: AppButtonType.primary,
+                              backgroundColor: accentColor,
+                              onPressed: () {
+                                final code = manualSnController.text.trim().isNotEmpty
+                                    ? manualSnController.text.trim()
+                                    : (selectedSn?.serialNumber ?? '');
+                                if (code.isNotEmpty) {
+                                  Navigator.pop(modalCtx);
+                                  widget.bloc.add(
+                                    ScanMachineBarcode(
+                                      transactionId: _currentTransaction.id,
+                                      barcode: code,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _showRelocateModal(BuildContext context, MachineItem item) async {
     List<GudangModel> gudangs = [];
     List<ProductLokasiModel> lokasis = [];
@@ -140,9 +325,26 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
         return StatefulBuilder(
           builder: (modalCtx, setModalState) {
-            final filteredLokasi = selectedGudang != null
-                ? lokasis.where((l) => l.idGudang == null || l.idGudang == selectedGudang!.idGudang).toList()
+            final uniqueGudangs = <int, GudangModel>{};
+            for (final g in gudangs) {
+              uniqueGudangs.putIfAbsent(g.idGudang, () => g);
+            }
+            final deduplicatedGudangs = uniqueGudangs.values.toList();
+            final effectiveGudang = deduplicatedGudangs.any((g) => g.idGudang == selectedGudang?.idGudang)
+                ? deduplicatedGudangs.firstWhere((g) => g.idGudang == selectedGudang?.idGudang)
+                : (deduplicatedGudangs.isNotEmpty ? deduplicatedGudangs.first : null);
+
+            final filteredLokasi = effectiveGudang != null
+                ? lokasis.where((l) => l.idGudang == null || l.idGudang == effectiveGudang.idGudang).toList()
                 : lokasis;
+            final uniqueLokasi = <int, ProductLokasiModel>{};
+            for (final l in filteredLokasi) {
+              uniqueLokasi.putIfAbsent(l.idProductLokasi, () => l);
+            }
+            final deduplicatedLokasi = uniqueLokasi.values.toList();
+            final effectiveLokasi = deduplicatedLokasi.any((l) => l.idProductLokasi == selectedLokasi?.idProductLokasi)
+                ? deduplicatedLokasi.firstWhere((l) => l.idProductLokasi == selectedLokasi?.idProductLokasi)
+                : (deduplicatedLokasi.isNotEmpty ? deduplicatedLokasi.first : null);
 
             return Padding(
               padding: EdgeInsets.only(
@@ -211,10 +413,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<GudangModel>(
-                            value: selectedGudang,
+                            value: effectiveGudang,
                             isExpanded: true,
                             hint: const Text('Pilih Gudang Tujuan'),
-                            items: gudangs.map((g) {
+                            items: deduplicatedGudangs.map((g) {
                               return DropdownMenuItem<GudangModel>(
                                 value: g,
                                 child: Text('${g.nmGudang} (${g.codeGudang})'),
@@ -227,9 +429,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                                   final newLocs = lokasis
                                       .where((l) => l.idGudang == null || l.idGudang == val.idGudang)
                                       .toList();
-                                  if (newLocs.isNotEmpty) {
-                                    selectedLokasi = newLocs.first;
-                                  }
+                                  selectedLokasi = newLocs.isNotEmpty ? newLocs.first : null;
                                 });
                               }
                             },
@@ -254,10 +454,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<ProductLokasiModel>(
-                            value: selectedLokasi,
+                            value: effectiveLokasi,
                             isExpanded: true,
                             hint: const Text('Pilih Lokasi Rak'),
-                            items: filteredLokasi.map((l) {
+                            items: deduplicatedLokasi.map((l) {
                               return DropdownMenuItem<ProductLokasiModel>(
                                 value: l,
                                 child: Text(
@@ -397,22 +597,41 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       ),
                       const Divider(height: 24),
 
-                      // Metadata Tabel
+                      // Metadata Tabel Baru (t_transaksi_gudang)
+                      if (_currentTransaction.nmGudang != null)
+                        _DetailRow(
+                          icon: Icons.warehouse_outlined,
+                          label: 'Gudang (m_gudang)',
+                          value: _currentTransaction.nmGudang!,
+                        ),
+                      if (isInbound && _currentTransaction.nmSupplier != null)
+                        _DetailRow(
+                          icon: Icons.business_outlined,
+                          label: 'Supplier (m_supplier)',
+                          value: _currentTransaction.nmSupplier!,
+                        ),
+                      if (!isInbound && _currentTransaction.codeDo != null)
+                        _DetailRow(
+                          icon: Icons.assignment_outlined,
+                          label: 'Delivery Order (tb_do_hdr)',
+                          value: _currentTransaction.codeDo!,
+                        ),
                       _DetailRow(
                         icon: isInbound ? Icons.inventory_2_outlined : Icons.description_outlined,
                         label: _currentTransaction.type.refLabel,
                         value: _currentTransaction.referenceNumber,
                       ),
                       _DetailRow(
-                        icon: Icons.business_outlined,
+                        icon: isInbound ? Icons.business_outlined : Icons.store_mall_directory_outlined,
                         label: _currentTransaction.type.partnerLabel,
                         value: _currentTransaction.partnerName,
                       ),
-                      _DetailRow(
-                        icon: isInbound ? Icons.lock_outline : Icons.local_shipping_outlined,
-                        label: _currentTransaction.type.vehicleLabel,
-                        value: _currentTransaction.vehicleOrContainerId,
-                      ),
+                      if (_currentTransaction.vehicleOrContainerId.isNotEmpty)
+                        _DetailRow(
+                          icon: isInbound ? Icons.lock_outline : Icons.local_shipping_outlined,
+                          label: _currentTransaction.type.vehicleLabel,
+                          value: _currentTransaction.vehicleOrContainerId,
+                        ),
                       if (_currentTransaction.operatorName != null)
                         _DetailRow(
                           icon: Icons.person_outline,
@@ -502,20 +721,31 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                       ),
                     ),
                     if (!isCompleted)
-                      TextButton.icon(
-                        icon: const Icon(Icons.qr_code_scanner, size: 16),
-                        label: const Text('Buka Scanner'),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ScannerPage(
-                                transaction: _currentTransaction,
-                                bloc: widget.bloc,
-                              ),
-                            ),
-                          );
-                        },
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextButton.icon(
+                            icon: const Icon(Icons.playlist_add, size: 16),
+                            label: const Text('Pilih SN'),
+                            onPressed: () => _showAddSnModal(context),
+                          ),
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            icon: const Icon(Icons.qr_code_scanner, size: 16),
+                            label: const Text('Buka Scanner'),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ScannerPage(
+                                    transaction: _currentTransaction,
+                                    bloc: widget.bloc,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                   ],
                 ),

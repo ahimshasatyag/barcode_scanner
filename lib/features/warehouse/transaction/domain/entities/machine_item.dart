@@ -112,6 +112,16 @@ class MachineItem {
   }
 
   @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MachineItem &&
+          serialNumber.trim().toUpperCase() ==
+              other.serialNumber.trim().toUpperCase();
+
+  @override
+  int get hashCode => serialNumber.trim().toUpperCase().hashCode;
+
+  @override
   String toString() =>
       'MachineItem(idProductSn: $idProductSn, sn: $serialNumber, gudang: $nmGudang, lokasi: $completeName)';
 }
